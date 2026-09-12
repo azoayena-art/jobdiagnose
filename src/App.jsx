@@ -1,0 +1,39 @@
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import LandingPage from './LandingPage';
+import Auth from './Auth';
+import Recovery from './Recovery';
+import Admin from './Admin';
+
+// Composant pour nettoyer les URL avec des paramètres bizarres
+function URLCleaner({ children }) {
+    const location = useLocation();
+    
+    useEffect(() => {
+        // Si l'URL contient des paramètres de tracking suspects, on les supprime
+        if (location.search && (location.search.includes('spm=') || location.search.includes('utm_'))) {
+            const cleanPath = location.pathname;
+            window.history.replaceState({}, document.title, cleanPath);
+        }
+    }, [location]);
+    
+    return children;
+}
+
+function App() {
+    return (
+        <Router>
+            <URLCleaner>
+                <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/recovery" element={<Recovery />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </URLCleaner>
+        </Router>
+    );
+}
+
+export default App;
