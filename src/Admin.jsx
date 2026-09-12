@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { account, databases, ID } from './appwrite';
 import { Link } from 'react-router-dom';
 
 const ADMIN_PASSWORD = 'JobDiagnose2026!';
