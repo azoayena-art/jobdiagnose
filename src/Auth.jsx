@@ -82,49 +82,59 @@ export default function Auth() {
         setActivationMessage('');
     };
 
-      const handleActivationClick = async () => {
+         const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
         
         const code = activationCode.trim().toUpperCase();
 
+        // DEBUG 1 : Vérifier si le code est bien lu
         if (!code) {
-            setError('Veuillez entrer un code.');
+            setError('❌ Le champ code est vide !');
             return;
         }
+        setError(`🔍 Code saisi : ${code}`);
 
         setIsActivating(true);
 
         try {
             if (!code.startsWith('JD-')) {
-                throw new Error('Code invalide. Format attendu : JD-ESS-XXXX ou JD-PREM-XXXX');
+                throw new Error(' Le code ne commence pas par JD-');
             }
 
             const parts = code.split('-');
             if (parts.length !== 3) {
-                throw new Error('Format de code incorrect. Exemple : JD-ESS-A7K9');
+                throw new Error(`❌ Mauvais format. Parties trouvées : ${parts.length}`);
             }
 
             const prefix = parts[1];
+            setError(`🔍 Préfixe détecté : ${prefix}`);
             
+            // DEBUG 2 : Vérifier les codes dans localStorage
             let allCodes = [];
             try {
                 const stored = localStorage.getItem('jobdiagnose_codes');
-                allCodes = stored ? JSON.parse(stored) : [];
+                if (!stored) {
+                    throw new Error('❌ Aucun code trouvé dans le système. Générez des codes dans /admin d\'abord.');
+                }
+                allCodes = JSON.parse(stored);
+                setError(`🔍 ${allCodes.length} codes trouvés dans le système`);
             } catch (err) {
-                throw new Error('Erreur de lecture des codes.');
+                throw new Error(err.message);
             }
             
             const codeIndex = allCodes.findIndex(c => c.code === code);
             
             if (codeIndex === -1) {
-                throw new Error('Code non trouvé. Vérifiez votre code ou contactez le support.');
+                const codesDisponibles = allCodes.filter(c => !c.used).map(c => c.code).join(', ');
+                throw new Error(` Code non trouvé. Codes disponibles : ${codesDisponibles || 'aucun'}`);
             }
 
             const codeData = allCodes[codeIndex];
+            setError(`🔍 Code trouvé, utilisé : ${codeData.used}`);
             
             if (codeData.used) {
-                throw new Error('Ce code a déjà été utilisé.');
+                throw new Error('❌ Ce code a déjà été utilisé.');
             }
 
             let planType = '';
@@ -133,7 +143,7 @@ export default function Auth() {
             } else if (prefix === 'PREM') {
                 planType = 'premium';
             } else {
-                throw new Error('Préfixe de code non reconnu.');
+                throw new Error(`❌ Préfixe non reconnu : ${prefix}`);
             }
 
             allCodes[codeIndex].used = true;
@@ -144,10 +154,11 @@ export default function Auth() {
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
 
-            setActivationMessage(`✅ Code activé avec succès ! Plan ${planType.toUpperCase()} débloqué.`);
+            setActivationMessage(`✅ Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode('');
             setShowActivationForm(false);
             setShowPaywall(false);
+            setError('');
 
         } catch (err) {
             setError(err.message);
@@ -155,7 +166,6 @@ export default function Auth() {
             setIsActivating(false);
         }
     };
-
     const extractTextFromPDF = async (file) => {
         try {
             setIsExtracting(true);
