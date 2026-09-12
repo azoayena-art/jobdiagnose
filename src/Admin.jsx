@@ -52,26 +52,29 @@ export default function Admin() {
         return code;
     };
 
-    const handleGenerateCodes = () => {
-        const codes = [];
+     const handleGenerateCodes = async () => {
         const prefix = codeType === 'essentiel' ? 'JD-ESS' : 'JD-PREM';
+        const newGenerated = [];
         
-        for (let i = 0; i < codeCount; i++) {
-            const code = `${prefix}-${generateCode()}`;
-            codes.push({
-                code: code,
-                type: codeType,
-                createdAt: new Date().toISOString(),
-                used: false,
-                usedBy: null
-            });
+        try {
+            for (let i = 0; i < codeCount; i++) {
+                const code = `${prefix}-${generateCode()}`;
+                
+                // Sauvegarde directe dans Appwrite (Cloud)
+                await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
+                    code: code,
+                    type: codeType,
+                    used: false,
+                    createdAt: new Date().toISOString()
+                });
+                
+                newGenerated.push({ code, type: codeType, used: false });
+            }
+            setNewCodes(newGenerated);
+            alert(`✅ ${codeCount} codes générés et sauvegardés dans le Cloud !`);
+        } catch (err) {
+            alert('Erreur lors de la génération : ' + err.message);
         }
-
-        const allCodes = [...codes, ...generatedCodes];
-        localStorage.setItem('jobdiagnose_codes', JSON.stringify(allCodes));
-        
-        setNewCodes(codes);
-        setGeneratedCodes(allCodes);
     };
 
     const copyToClipboard = (text) => {

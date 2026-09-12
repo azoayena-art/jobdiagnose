@@ -1,3 +1,5 @@
+import { account, ID, databases, storage, DB_ID, COLLECTIONS, BUCKET_ID } from './appwrite';
+import { Query } from 'appwrite'; // <-- Ajoutez cette ligne juste en dessous
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { account, ID, databases, storage, DB_ID, COLLECTIONS, BUCKET_ID } from './appwrite';
@@ -67,32 +69,27 @@ export default function Auth() {
         setUser(null); setEmail(''); setPassword(''); setSelectedFile(null); setCvText(''); setJobOfferText(''); setAiAnalysis(null); setUploadMessage(''); setShowPaywall(false); setActivationCode(''); setShowActivationForm(false); setActivationMessage('');
     };
 
-    const handleActivationClick = async () => {
+        const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
         const code = activationCode.trim().toUpperCase();
         
-        if (!code) {
-            setError('Veuillez entrer un code.');
-            return;
-        }
-
+        if (!code) { setError('Veuillez entrer un code.'); return; }
         setIsActivating(true);
 
         try {
-            let allCodes = [];
-            const stored = localStorage.getItem('jobdiagnose_codes');
-            if (!stored) {
-                throw new Error('Aucun code trouvé. Générez des codes dans /admin d\'abord.');
-            }
-            allCodes = JSON.parse(stored);
-            
-            const codeIndex = allCodes.findIndex(c => c.code === code);
-            if (codeIndex === -1) {
+            // 1. Chercher le code dans la base de données Appwrite
+            const response = await databases.listDocuments(DB_ID, COLLECTIONS.CODES, [
+                Query.equal('code', code),
+                Query.limit(1)
+            ]);
+
+            if (response.documents.length === 0) {
                 throw new Error('Code non trouvé. Vérifiez le code ou contactez le support.');
             }
 
-            const codeData = allCodes[codeIndex];
+            const codeData = response.documents[0];
+
             if (codeData.used) {
                 throw new Error('Ce code a déjà été utilisé.');
             }
@@ -107,11 +104,14 @@ export default function Auth() {
                 throw new Error('Préfixe de code non reconnu.');
             }
 
-            allCodes[codeIndex].used = true;
-            allCodes[codeIndex].usedBy = user.$id;
-            allCodes[codeIndex].usedAt = new Date().toISOString();
-            localStorage.setItem('jobdiagnose_codes', JSON.stringify(allCodes));
+            // 2. Marquer le code comme utilisé dans Appwrite
+            await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
+                used: true,
+                usedBy: user.$id,
+                usedAt: new Date().toISOString()
+            });
 
+            // 3. Activer le plan pour l'utilisateur
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
 
@@ -125,7 +125,6 @@ export default function Auth() {
             setIsActivating(false);
         }
     };
-
     const extractTextFromPDF = async (file) => {
         try {
             setIsExtracting(true);
