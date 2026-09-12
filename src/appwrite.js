@@ -15,6 +15,6 @@ export const DB_ID = 'jobdiagnose_db';
 export const COLLECTIONS = {
     USERS: import.meta.env.VITE_APPWRITE_COLLECTIONS_USERS,
     CVS: import.meta.env.VITE_APPWRITE_COLLECTIONS_CVS,
-    CODES: 'codes' // <-- Ajoutez cette ligne (si votre Collection ID dans Appwrite est différent de 'codes', mettez le bon ID)
+    CODES: 'codes' // ️ CETTE LIGNE DOIT ÊTRE PRÉSENTE
 };
 export const BUCKET_ID = 'cvs';
