@@ -77,7 +77,6 @@ export default function Auth() {
             return;
         }
 
-        alert('BOUTON CLIQUÉ ! Code saisi : ' + code);
         setIsActivating(true);
 
         try {
@@ -119,6 +118,7 @@ export default function Auth() {
             setActivationMessage(`✅ Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode('');
             setShowActivationForm(false);
+            setShowPaywall(false);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -266,7 +266,7 @@ export default function Auth() {
         }
 
         setIsUploading(true);
-        setUploadMessage('⏳ Analyse en cours...');
+        setUploadMessage(jobOfferText.trim() ? '⏳ Analyse du matching CV vs Offre...' : ' Analyse du CV en cours...');
         setAiAnalysis(null);
 
         try {
@@ -297,19 +297,41 @@ export default function Auth() {
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-10">
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">Bienvenue, <span className="text-blue-600">{user.name}</span> !</h1>
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg mb-4">
+                            <span className="text-4xl">💼</span>
+                        </div>
+                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                            Bienvenue, <span className="text-blue-600">{user.name}</span> !
+                        </h1>
+                        <p className="text-gray-600 text-lg">Optimisez votre candidature avec l'intelligence artificielle</p>
+                        
                         <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white shadow-md">
-                            <span>Plan {userPlan.toUpperCase()}</span>
+                            <span className="text-xl">
+                                {userPlan === 'premium' ? '👑' : (userPlan === 'essentiel' ? '⭐' : '🆓')}
+                            </span>
+                            <span className={userPlan === 'premium' ? 'text-orange-600' : (userPlan === 'essentiel' ? 'text-blue-600' : 'text-gray-600')}>
+                                Plan {userPlan.toUpperCase()}
+                            </span>
+                            {userPlan !== 'free' && (
+                                <span className="text-green-600 text-xs ml-2">✓ Actif</span>
+                            )}
                         </div>
                     </div>
 
                     {userPlan === 'free' && (
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div>
-                                    <p className="font-bold text-gray-900">Vous avez un code d'activation ?</p>
+                                <div className="flex items-center gap-3 text-left">
+                                    <span className="text-3xl">🔑</span>
+                                    <div>
+                                        <p className="font-bold text-gray-900">Vous avez un code d'activation ?</p>
+                                        <p className="text-sm text-gray-600">Entrez votre code reçu après paiement pour débloquer les fonctionnalités premium.</p>
+                                    </div>
                                 </div>
-                                <button onClick={() => setShowActivationForm(!showActivationForm)} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-semibold">
+                                <button 
+                                    onClick={() => setShowActivationForm(!showActivationForm)}
+                                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md whitespace-nowrap"
+                                >
                                     {showActivationForm ? '✕ Fermer' : '🔑 Activer un code'}
                                 </button>
                             </div>
@@ -328,7 +350,7 @@ export default function Auth() {
                                             type="button"
                                             onClick={handleActivationClick}
                                             disabled={isActivating}
-                                            className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all cursor-pointer disabled:opacity-50"
+                                            className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md cursor-pointer disabled:opacity-50"
                                         >
                                             {isActivating ? '⏳ Activation...' : '✅ Activer'}
                                         </button>
@@ -340,54 +362,169 @@ export default function Auth() {
                         </div>
                     )}
 
+                    {userPlan === 'free' && (
+                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                            <div className="flex items-center gap-3 text-left">
+                                <span className="text-3xl"></span>
+                                <div>
+                                    <p className="font-bold text-gray-900">Besoin d'une rédaction humaine experte ?</p>
+                                    <p className="text-sm text-gray-600">Obtenez une réécriture complète de votre CV + lettre de motivation.</p>
+                                </div>
+                            </div>
+                            <a href="https://comeup.com/fr/pay/X4gdrlCxauoT" target="_blank" rel="noopener noreferrer" className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-semibold hover:from-yellow-600 hover:to-orange-600 transition-all shadow-md whitespace-nowrap flex items-center gap-2">
+                                <span></span> Voir l'offre à 49,99€
+                            </a>
+                        </div>
+                    )}
+
                     <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
                         <form onSubmit={handleUploadCV} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">1. Uploadez votre CV (PDF)</label>
-                                <input id="cv-input" type="file" accept=".pdf" onChange={handleFileSelect} disabled={isUploading || isExtracting} className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-xl" />
+                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                    <span className="text-xl">📄</span>
+                                    <span>1. Uploadez votre CV (PDF)</span>
+                                </label>
+                                <div className="relative">
+                                    <input id="cv-input" type="file" accept=".pdf,.docx" onChange={handleFileSelect} disabled={isUploading || isExtracting} className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer hover:border-blue-500 transition-colors focus:outline-none focus:border-blue-600 disabled:opacity-50" />
+                                    {isExtracting && <div className="absolute right-4 top-1/2 transform -translate-y-1/2"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}
+                                </div>
+                                {isExtracting && <p className="text-blue-600 mt-2 text-sm flex items-center gap-2"><span>⏳</span> Extraction en cours...</p>}
                             </div>
+                            
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">2. Texte extrait</label>
-                                <textarea value={cvText} onChange={(e) => setCvText(e.target.value)} disabled={isUploading} className="w-full h-40 px-4 py-3 border rounded-xl resize-none" />
+                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                    <span className="text-xl">📋</span>
+                                    <span>2. Texte extrait</span>
+                                    {cvText && <span className="text-green-600 font-normal flex items-center gap-1"><span>✅</span> Extrait automatiquement</span>}
+                                </label>
+                                <textarea value={cvText} onChange={(e) => setCvText(e.target.value)} disabled={isUploading} placeholder="Le texte de votre CV apparaîtra ici automatiquement..." className={`w-full h-40 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors ${cvText ? 'bg-green-50 border-green-300' : 'bg-white border-gray-300'} disabled:opacity-50`} />
                             </div>
-                            <button type="submit" disabled={isUploading || isExtracting || !selectedFile || !cvText.trim()} className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300">
-                                {isUploading ? 'Analyse en cours...' : 'Diagnostiquer mon CV'}
+
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                    <span className="text-xl">🎯</span>
+                                    <span>3. Texte de l'offre d'emploi</span>
+                                    <span className="text-blue-600 font-normal text-xs">(Optionnel - pour le matching)</span>
+                                </label>
+                                <textarea value={jobOfferText} onChange={(e) => setJobOfferText(e.target.value)} disabled={isUploading} placeholder="Copiez-collez la description du poste pour une analyse de matching..." className="w-full h-32 px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors disabled:opacity-50" />
+                            </div>
+
+                            <button type="submit" disabled={isUploading || isExtracting || !selectedFile || !cvText.trim()} className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-blue-200 ${(!selectedFile || !cvText.trim() || isUploading || isExtracting) ? 'bg-gray-300 cursor-not-allowed text-gray-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg'}`}>
+                                {isUploading ? <span className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>Analyse en cours...</span> : isExtracting ? 'Extraction...' : (jobOfferText.trim() ? <span className="flex items-center justify-center gap-2"><span>🎯</span> Analyser le Matching CV vs Offre</span> : <span className="flex items-center justify-center gap-2"><span>🚀</span> Diagnostiquer mon CV</span>)}
                             </button>
                         </form>
-                        {uploadMessage && <div className="mt-6 p-4 rounded-xl text-center font-medium bg-gray-100">{uploadMessage}</div>}
+
+                        {showPaywall && userPlan === 'free' && (
+                            <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-6 shadow-lg">
+                                <div className="flex items-start gap-4">
+                                    <span className="text-4xl">🔒</span>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-2">Analyse gratuite utilisée !</h3>
+                                        <p className="text-gray-700 mb-4">Vous avez bénéficié de votre diagnostic gratuit. Pour continuer, activez un code ou choisissez une offre :</p>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button 
+                                                onClick={() => { setShowActivationForm(true); setShowPaywall(false); }}
+                                                className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md"
+                                            >
+                                                🔑 J'ai un code d'activation
+                                            </button>
+                                            <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-center hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md">
+                                                🥉 Essentiel - 9,99€/mois
+                                            </a>
+                                            <a href="https://comeup.com/fr/pay/X4gdrlCxauoT" target="_blank" rel="noopener noreferrer" className="flex-1 py-3 px-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold text-center hover:from-yellow-600 hover:to-orange-600 transition-all shadow-md">
+                                                👑 Premium - 49,99€
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {uploadMessage && !showPaywall && (
+                            <div className={`mt-6 p-4 rounded-xl text-center font-medium ${uploadMessage.includes('Succès') ? 'bg-green-100 text-green-800 border border-green-300' : (uploadMessage.includes('Extraction') ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-red-100 text-red-800 border border-red-300')}`}>
+                                {uploadMessage}
+                            </div>
+                        )}
                     </div>
 
                     {aiAnalysis && (
                         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-                            <h2 className="text-2xl font-bold text-center mb-6">Résultat du Diagnostic</h2>
+                            <h2 className="text-2xl font-bold text-center text-gray-900 mb-6 flex items-center justify-center gap-2">
+                                <span className="text-3xl">{jobOfferText.trim() ? '🎯' : '📊'}</span>
+                                <span>{jobOfferText.trim() ? 'Résultat du Matching CV vs Offre' : 'Résultat du Diagnostic'}</span>
+                            </h2>
+                            
                             <div className="text-center mb-8">
-                                <div className="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-blue-500 text-blue-600 mb-4">
-                                    <div><div className="text-4xl font-bold">{aiAnalysis.score}</div><div className="text-sm">/100</div></div>
+                                <div className={`inline-flex items-center justify-center w-32 h-32 rounded-full border-8 ${aiAnalysis.score >= 70 ? 'border-green-500 text-green-600' : (aiAnalysis.score >= 50 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600')} mb-4`}>
+                                    <div>
+                                        <div className="text-4xl font-bold">{aiAnalysis.score}</div>
+                                        <div className="text-sm">/100</div>
+                                    </div>
+                                </div>
+                                <div className="w-full max-w-md mx-auto bg-gray-200 rounded-full h-3">
+                                    <div className={`h-3 rounded-full transition-all duration-1000 ${aiAnalysis.score >= 70 ? 'bg-green-600' : (aiAnalysis.score >= 50 ? 'bg-yellow-600' : 'bg-red-600')}`} style={{ width: `${aiAnalysis.score}%` }}></div>
                                 </div>
                             </div>
-                            <div className="bg-blue-50 border-l-4 border-blue-600 p-5 mb-6 rounded-r-xl">
-                                <p className="text-gray-700"><span className="font-bold text-blue-600">Conseil :</span> {aiAnalysis.conseil_titre}</p>
+
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600 p-5 mb-6 rounded-r-xl">
+                                <p className="text-gray-700 flex items-start gap-3">
+                                    <span className="text-2xl">💡</span>
+                                    <span><span className="font-bold text-blue-600">Conseil personnalisé :</span> {aiAnalysis.conseil_titre}</span>
+                                </p>
                             </div>
+                            
                             <div className="grid md:grid-cols-2 gap-6">
-                                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                                    <h3 className="text-lg font-bold text-green-800 mb-4">Points Forts</h3>
-                                    <ul className="space-y-3">{aiAnalysis.forces.map((f, i) => <li key={i} className="text-green-900">✓ {f}</li>)}</ul>
+                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                                    <h3 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
+                                        <span className="text-2xl">✨</span> Points Forts
+                                    </h3>
+                                    <ul className="space-y-3">
+                                        {aiAnalysis.forces.map((f, i) => (
+                                            <li key={i} className="flex items-start gap-3 text-green-900">
+                                                <span className="text-green-600 font-bold mt-1">✓</span>
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
-                                <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
-                                    <h3 className="text-lg font-bold text-orange-800 mb-4">Axes d'Amélioration</h3>
-                                    <ul className="space-y-3">{aiAnalysis.faiblesses.map((f, i) => <li key={i} className="text-orange-900">→ {f}</li>)}</ul>
+                                
+                                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 border border-orange-200">
+                                    <h3 className="text-lg font-bold text-orange-800 mb-4 flex items-center gap-2">
+                                        <span className="text-2xl">⚡</span> Axes d'Amélioration
+                                    </h3>
+                                    <ul className="space-y-3">
+                                        {aiAnalysis.faiblesses.map((f, i) => (
+                                            <li key={i} className="flex items-start gap-3 text-orange-900">
+                                                <span className="text-orange-600 font-bold mt-1">→</span>
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
-                            </div>
-                            <div className="text-center mt-8">
-                                <button onClick={exportToPDF} className="px-8 py-4 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all">
-                                    📄 Télécharger mon rapport en PDF
-                                </button>
                             </div>
                         </div>
                     )}
 
+                    {aiAnalysis && (
+                        <div className="text-center mt-8">
+                            <button 
+                                onClick={exportToPDF}
+                                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-200 flex items-center gap-3 mx-auto"
+                            >
+                                <span className="text-2xl">📄</span>
+                                <span>Télécharger mon rapport en PDF</span>
+                            </button>
+                            <p className="text-sm text-gray-500 mt-3 flex items-center justify-center gap-2">
+                                <span></span> Format A4 professionnel • Prêt à imprimer ou partager
+                            </p>
+                        </div>
+                    )}
+
                     <div className="text-center mt-8">
-                        <button onClick={handleLogout} className="px-8 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700">Se déconnecter</button>
+                        <button onClick={handleLogout} className="px-8 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-red-200 flex items-center gap-2 mx-auto">
+                            <span>👋</span>
+                            <span>Se déconnecter</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -395,24 +532,78 @@ export default function Auth() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-2xl p-10 border border-gray-100">
                 <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900">{isLogin ? 'Connexion' : 'Inscription'}</h2>
+                    <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium mb-4">
+                        <span>←</span>
+                        <span>Retour à l'accueil</span>
+                    </Link>
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg mb-4">
+                        <span className="text-3xl">💼</span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-900">
+                        {isLogin ? 'Connexion' : 'Inscription'}
+                    </h2>
+                    <p className="mt-2 text-gray-600">
+                        {isLogin ? "Accédez à votre espace" : "Créez votre compte gratuitement"}
+                    </p>
                 </div>
-                {error && <div className="bg-red-100 text-red-700 px-4 py-3 rounded-xl">{error}</div>}
+
+                {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
+                        <span>⚠️</span>
+                        <span>{error}</span>
+                    </div>
+                )}
+
                 <form onSubmit={handleAuth} className="mt-8 space-y-6">
-                    {!isLogin && <input name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-3 border rounded-xl" placeholder="Nom complet" />}
-                    <input name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 border rounded-xl" placeholder="Email" />
-                    <input name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 border rounded-xl" placeholder="Mot de passe" />
-                    <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
-                        {isLogin ? 'Se connecter' : "S'inscrire"}
-                    </button>
+                    {!isLogin && (
+                        <div>
+                            <label htmlFor="name" className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                <span>👤</span> Nom complet
+                            </label>
+                            <input id="name" name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all" placeholder="Jean Dupont" />
+                        </div>
+                    )}
+                    
+                    <div>
+                        <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                            <span></span> Adresse email
+                        </label>
+                        <input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all" placeholder="jean.dupont@email.com" />
+                    </div>
+                    
+                    <div>
+                        <label htmlFor="password" className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                            <span>🔒</span> Mot de passe
+                        </label>
+                        <input id="password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="appearance-none rounded-xl relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all" placeholder="••••••••" />
+                    </div>
+
+                    {isLogin && (
+                        <div className="text-right -mt-4">
+                            <Link to="/recovery" className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline">
+                                🔑 Mot de passe oublié ?
+                            </Link>
+                        </div>
+                    )}
+
+                    <div>
+                        <button type="submit" className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all transform hover:scale-[1.02] shadow-lg">
+                            <span>{isLogin ? '🚀' : '✨'}</span>
+                            <span>{isLogin ? 'Se connecter' : "S'inscrire"}</span>
+                        </button>
+                    </div>
                 </form>
+
                 <div className="text-center">
-                    <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 font-semibold underline">
-                        {isLogin ? "S'inscrire" : "Se connecter"}
-                    </button>
+                    <p className="text-gray-600">
+                        {isLogin ? "Pas encore de compte ? " : "Déjà un compte ? "}
+                        <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 font-semibold hover:text-blue-700 transition-colors underline">
+                            {isLogin ? "S'inscrire" : "Se connecter"}
+                        </button>
+                    </p>
                 </div>
             </div>
         </div>
