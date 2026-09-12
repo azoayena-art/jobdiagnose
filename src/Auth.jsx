@@ -82,15 +82,20 @@ export default function Auth() {
         setActivationMessage('');
     };
 
-    const handleActivation = async (e) => {
-        e.preventDefault();
+      const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
+        
+        const code = activationCode.trim().toUpperCase();
+
+        if (!code) {
+            setError('Veuillez entrer un code.');
+            return;
+        }
+
         setIsActivating(true);
 
         try {
-            const code = activationCode.trim().toUpperCase();
-            
             if (!code.startsWith('JD-')) {
                 throw new Error('Code invalide. Format attendu : JD-ESS-XXXX ou JD-PREM-XXXX');
             }
@@ -107,7 +112,7 @@ export default function Auth() {
                 const stored = localStorage.getItem('jobdiagnose_codes');
                 allCodes = stored ? JSON.parse(stored) : [];
             } catch (err) {
-                throw new Error('Erreur de lecture des codes. Contactez le support.');
+                throw new Error('Erreur de lecture des codes.');
             }
             
             const codeIndex = allCodes.findIndex(c => c.code === code);
@@ -124,17 +129,11 @@ export default function Auth() {
 
             let planType = '';
             if (prefix === 'ESS') {
-                if (codeData.type !== 'essentiel') {
-                    throw new Error('Ce code ne correspond pas au plan Essentiel.');
-                }
                 planType = 'essentiel';
             } else if (prefix === 'PREM') {
-                if (codeData.type !== 'premium') {
-                    throw new Error('Ce code ne correspond pas au plan Premium.');
-                }
                 planType = 'premium';
             } else {
-                throw new Error('Préfixe de code non reconnu (doit être ESS ou PREM).');
+                throw new Error('Préfixe de code non reconnu.');
             }
 
             allCodes[codeIndex].used = true;
@@ -145,7 +144,7 @@ export default function Auth() {
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
 
-            setActivationMessage(`✅ Code activé avec succès ! Vous avez maintenant accès au plan ${planType.toUpperCase()}.`);
+            setActivationMessage(`✅ Code activé avec succès ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode('');
             setShowActivationForm(false);
             setShowPaywall(false);
@@ -655,31 +654,28 @@ export default function Auth() {
                             </div>
                             
                             {showActivationForm && (
-                                <form onSubmit={handleActivation} className="mt-4 pt-4 border-t border-blue-200">
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <input
-                                            type="text"
-                                            value={activationCode}
-                                            onChange={(e) => setActivationCode(e.target.value)}
-                                            placeholder="JD-ESS-XXXX ou JD-PREM-XXXX"
-                                            className="flex-1 px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-600 font-mono uppercase"
-                                            required
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={isActivating || !activationCode.trim()}
-                                            className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {isActivating ? '⏳ Activation...' : '✅ Activer'}
-                                        </button>
-                                    </div>
-                                    {activationMessage && (
-                                        <p className="mt-3 text-green-700 font-medium text-center">{activationMessage}</p>
-                                    )}
-                                </form>
-                            )}
-                        </div>
-                    )}
+    <div className="mt-4 pt-4 border-t border-blue-200">
+        <div className="flex flex-col sm:flex-row gap-3">
+            <input
+                type="text"
+                value={activationCode}
+                onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                placeholder="JD-ESS-XXXX ou JD-PREM-XXXX"
+                className="flex-1 px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-600 font-mono uppercase"
+            />
+            <button
+                type="button"
+                onClick={handleActivationClick}
+                disabled={isActivating || activationCode.trim().length < 10}
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isActivating ? '⏳ Activation...' : '✅ Activer'}
+            </button>
+        </div>
+        {error && <p className="mt-3 text-red-700 font-medium text-center">{error}</p>}
+        {activationMessage && <p className="mt-3 text-green-700 font-medium text-center">{activationMessage}</p>}
+    </div>
+)}
 
                     {userPlan === 'free' && (
                         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
