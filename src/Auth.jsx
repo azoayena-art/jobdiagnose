@@ -82,68 +82,50 @@ export default function Auth() {
         setActivationMessage('');
     };
 
-         const handleActivationClick = async () => {
+           const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
         
         const code = activationCode.trim().toUpperCase();
 
-        // DEBUG 1 : Vérifier si le code est bien lu
         if (!code) {
-            setError('❌ Le champ code est vide !');
+            setError('Veuillez entrer un code.');
             return;
         }
-        setError(`🔍 Code saisi : ${code}`);
+
+        alert('BOUTON CLIQUÉ ! Code saisi : ' + code);
 
         setIsActivating(true);
 
         try {
-            if (!code.startsWith('JD-')) {
-                throw new Error(' Le code ne commence pas par JD-');
-            }
-
-            const parts = code.split('-');
-            if (parts.length !== 3) {
-                throw new Error(`❌ Mauvais format. Parties trouvées : ${parts.length}`);
-            }
-
-            const prefix = parts[1];
-            setError(`🔍 Préfixe détecté : ${prefix}`);
-            
-            // DEBUG 2 : Vérifier les codes dans localStorage
             let allCodes = [];
-            try {
-                const stored = localStorage.getItem('jobdiagnose_codes');
-                if (!stored) {
-                    throw new Error('❌ Aucun code trouvé dans le système. Générez des codes dans /admin d\'abord.');
-                }
-                allCodes = JSON.parse(stored);
-                setError(`🔍 ${allCodes.length} codes trouvés dans le système`);
-            } catch (err) {
-                throw new Error(err.message);
+            const stored = localStorage.getItem('jobdiagnose_codes');
+            if (!stored) {
+                throw new Error('Aucun code trouvé. Générez des codes dans /admin d\'abord.');
             }
+            allCodes = JSON.parse(stored);
             
             const codeIndex = allCodes.findIndex(c => c.code === code);
             
             if (codeIndex === -1) {
-                const codesDisponibles = allCodes.filter(c => !c.used).map(c => c.code).join(', ');
-                throw new Error(` Code non trouvé. Codes disponibles : ${codesDisponibles || 'aucun'}`);
+                throw new Error('Code non trouvé. Vérifiez le code ou contactez le support.');
             }
 
             const codeData = allCodes[codeIndex];
-            setError(`🔍 Code trouvé, utilisé : ${codeData.used}`);
             
             if (codeData.used) {
-                throw new Error('❌ Ce code a déjà été utilisé.');
+                throw new Error('Ce code a déjà été utilisé.');
             }
 
+            const prefix = code.split('-')[1];
             let planType = '';
+            
             if (prefix === 'ESS') {
                 planType = 'essentiel';
             } else if (prefix === 'PREM') {
                 planType = 'premium';
             } else {
-                throw new Error(`❌ Préfixe non reconnu : ${prefix}`);
+                throw new Error('Préfixe de code non reconnu.');
             }
 
             allCodes[codeIndex].used = true;
@@ -157,8 +139,6 @@ export default function Auth() {
             setActivationMessage(`✅ Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode('');
             setShowActivationForm(false);
-            setShowPaywall(false);
-            setError('');
 
         } catch (err) {
             setError(err.message);
@@ -663,29 +643,29 @@ export default function Auth() {
                                 </button>
                             </div>
                             
-                            {showActivationForm && (
-    <div className="mt-4 pt-4 border-t border-blue-200">
-        <div className="flex flex-col sm:flex-row gap-3">
-            <input
-                type="text"
-                value={activationCode}
-                onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
-                placeholder="JD-ESS-XXXX ou JD-PREM-XXXX"
-                className="flex-1 px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-600 font-mono uppercase"
-            />
-            <button
-                type="button"
-                onClick={handleActivationClick}
-                disabled={isActivating || activationCode.trim().length < 10}
-                className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isActivating ? '⏳ Activation...' : '✅ Activer'}
-            </button>
-        </div>
-        {error && <p className="mt-3 text-red-700 font-medium text-center">{error}</p>}
-        {activationMessage && <p className="mt-3 text-green-700 font-medium text-center">{activationMessage}</p>}
-    </div>
-)}
+                                               {showActivationForm && (
+                        <div className="mt-4 pt-4 border-t border-blue-200">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <input
+                                    type="text"
+                                    value={activationCode}
+                                    onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                                    placeholder="JD-ESS-XXXX ou JD-PREM-XXXX"
+                                    className="flex-1 px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-600 font-mono uppercase"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleActivationClick}
+                                    disabled={isActivating}
+                                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                                >
+                                    {isActivating ? '⏳ Activation...' : '✅ Activer'}
+                                </button>
+                            </div>
+                            {error && <p className="mt-3 text-red-700 font-medium text-center">{error}</p>}
+                            {activationMessage && <p className="mt-3 text-green-700 font-medium text-center">{activationMessage}</p>}
+                        </div>
+                    )}
 
                     {userPlan === 'free' && (
                         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
