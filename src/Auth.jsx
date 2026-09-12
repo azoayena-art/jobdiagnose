@@ -69,7 +69,7 @@ export default function Auth() {
         setUser(null); setEmail(''); setPassword(''); setSelectedFile(null); setCvText(''); setJobOfferText(''); setAiAnalysis(null); setUploadMessage(''); setShowPaywall(false); setActivationCode(''); setShowActivationForm(false); setActivationMessage('');
     };
 
-        const handleActivationClick = async () => {
+           const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
         const code = activationCode.trim().toUpperCase();
@@ -78,7 +78,7 @@ export default function Auth() {
         setIsActivating(true);
 
         try {
-            // 1. Chercher le code dans la base de données Appwrite
+            // 1. Chercher le code dans Appwrite (Cloud)
             const response = await databases.listDocuments(DB_ID, COLLECTIONS.CODES, [
                 Query.equal('code', code),
                 Query.limit(1)
@@ -125,6 +125,7 @@ export default function Auth() {
             setIsActivating(false);
         }
     };
+
     const extractTextFromPDF = async (file) => {
         try {
             setIsExtracting(true);
