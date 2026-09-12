@@ -216,7 +216,7 @@ export default function Auth() {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
-                    ''HTTP-Referer': window.location.origin,',
+                    'HTTP-Referer': window.location.origin,
                     'X-Title': 'JobDiagnose MVP',
                     'Content-Type': 'application/json'
                 },
