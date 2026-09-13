@@ -28,7 +28,7 @@ export default function Admin() {
         return result;
     };
 
-    const handleGenerateCodes = async () => {
+       const handleGenerateCodes = async () => {
         const prefix = codeType === 'essentiel' ? 'JD-ESS' : 'JD-PREM';
         const generated = [];
         setError('');
@@ -37,12 +37,11 @@ export default function Admin() {
             for (let i = 0; i < codeCount; i++) {
                 const code = `${prefix}-${generateCode()}`;
                 
-                // Sauvegarde directe dans Appwrite (Cloud)
+                // Sauvegarde directe dans Appwrite (SANS createdAt)
                 await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
-    code: code,
-    type: codeType,
-    used: false
-});
+                    code: code,
+                    type: codeType,
+                    used: false
                 });
                 
                 generated.push({ code, type: codeType, used: false });
