@@ -39,10 +39,10 @@ export default function Admin() {
                 
                 // Sauvegarde directe dans Appwrite (Cloud)
                 await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
-                    code: code,
-                    type: codeType,
-                    used: false,
-                    createdAt: new Date().toISOString()
+    code: code,
+    type: codeType,
+    used: false
+});
                 });
                 
                 generated.push({ code, type: codeType, used: false });

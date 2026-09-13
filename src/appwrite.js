@@ -10,11 +10,12 @@ export const databases = new Databases(client);
 export const storage = new Storage(client);
 export { ID };
 
+// Ces variables sont lues depuis votre fichier .env et Vercel
 export const DB_ID = import.meta.env.VITE_APPWRITE_DB_ID;
 export const BUCKET_ID = import.meta.env.VITE_APPWRITE_BUCKET_ID;
 
 export const COLLECTIONS = {
     USERS: import.meta.env.VITE_APPWRITE_COLLECTIONS_USERS,
     CVS: import.meta.env.VITE_APPWRITE_COLLECTIONS_CVS,
-    CODES: 'codes' // Si votre Collection ID dans Appwrite est différent (ex: 65a...), remplacez 'codes' par cet ID
+    CODES: 'codes' // Assurez-vous que l'ID de votre collection dans Appwrite est bien 'codes'
 };
