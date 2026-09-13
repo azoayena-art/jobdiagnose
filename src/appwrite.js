@@ -1,4 +1,4 @@
-import { databases, ID, DB_ID, COLLECTIONS } from './appwrite';
+import { Client, Account, Databases, Storage, ID } from 'appwrite';
 
 const client = new Client();
 client
@@ -16,5 +16,5 @@ export const BUCKET_ID = import.meta.env.VITE_APPWRITE_BUCKET_ID;
 export const COLLECTIONS = {
     USERS: import.meta.env.VITE_APPWRITE_COLLECTIONS_USERS,
     CVS: import.meta.env.VITE_APPWRITE_COLLECTIONS_CVS,
-    CODES: 'codes' 
+    CODES: 'codes' // Si votre Collection ID dans Appwrite est différent (ex: 65a...), remplacez 'codes' par cet ID
 };
