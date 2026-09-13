@@ -12,6 +12,7 @@ export const storage = new Storage(client);
 export { ID };
 
 export const DB_ID = 'jobdiagnose_db';
+export const DB_ID = import.meta.env.VITE_APPWRITE_DB_ID;
 export const COLLECTIONS = {
     USERS: import.meta.env.VITE_APPWRITE_COLLECTIONS_USERS,
     CVS: import.meta.env.VITE_APPWRITE_COLLECTIONS_CVS,
