@@ -104,11 +104,10 @@ export default function Auth() {
             }
 
             // 2. Marquer le code comme utilisé dans Appwrite
-            await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
-                used: true,
-                usedBy: user.$id,
-                usedAt: new Date().toISOString()
-            });
+        await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
+    used: true,
+    usedBy: user.$id
+});
 
             // 3. Activer le plan pour l'utilisateur
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
