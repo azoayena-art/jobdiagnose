@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { account, ID, databases, storage, DB_ID, COLLECTIONS, BUCKET_ID } from './appwrite';
-import { Query } from 'appwrite';
-import { Permission, Role } from 'appwrite';
+import { Query, Permission, Role } from 'appwrite';
 import * as pdfjsLib from 'pdfjs-dist';
 import jsPDF from 'jspdf';
 
@@ -55,15 +54,28 @@ export default function Auth() {
             } else {
                 const newUser = await account.create(ID.unique(), email, password, name);
                 await account.createEmailPasswordSession(email, password);
-                Permission.update(Role.user(newUser.$id)),
+                // La création dans la collection 'users' a été retirée car elle n'existe pas
             }
             checkUser();
-        } catch (err) { setError(err.message); }
+        } catch (err) { 
+            setError(err.message); 
+        }
     };
 
     const handleLogout = async () => {
         await account.deleteSession('current');
-        setUser(null); setEmail(''); setPassword(''); setSelectedFile(null); setCvText(''); setJobOfferText(''); setAiAnalysis(null); setUploadMessage(''); setShowPaywall(false); setActivationCode(''); setShowActivationForm(false); setActivationMessage('');
+        setUser(null); 
+        setEmail(''); 
+        setPassword(''); 
+        setSelectedFile(null); 
+        setCvText(''); 
+        setJobOfferText(''); 
+        setAiAnalysis(null); 
+        setUploadMessage(''); 
+        setShowPaywall(false); 
+        setActivationCode(''); 
+        setShowActivationForm(false); 
+        setActivationMessage('');
     };
 
     const handleActivationClick = async () => {
@@ -101,8 +113,7 @@ export default function Auth() {
                 throw new Error('Préfixe de code non reconnu.');
             }
 
-            // 2. Marquer le code comme utilisé dans Appwrite
-            // 2. Marquer le code comme utilisé dans Appwrite
+            // 2. Marquer le code comme utilisé dans Appwrite (SANS usedAt)
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
                 used: true,
                 usedBy: user.$id
@@ -281,7 +292,8 @@ export default function Auth() {
                 localStorage.setItem('jobdiagnose_free_count', newCount.toString());
             }
             setSelectedFile(null);
-            document.getElementById('cv-input').value = '';
+            const cvInput = document.getElementById('cv-input');
+            if (cvInput) cvInput.value = '';
         } catch (err) {
             setUploadMessage(`❌ Erreur : ${err.message}`);
         } finally {
