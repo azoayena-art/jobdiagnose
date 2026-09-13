@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { databases, ID, DB_ID, COLLECTIONS } from './appwrite';
+   import { useState } from 'react';
+   import { databases, ID, DB_ID, COLLECTIONS } from './appwrite';
+   import { Permission, Role } from 'appwrite'; // <-- AJOUTEZ CETTE LIGNE
 
 export default function Admin() {
     const [password, setPassword] = useState('');
@@ -38,11 +39,15 @@ export default function Admin() {
                 const code = `${prefix}-${generateCode()}`;
                 
                 // Sauvegarde directe dans Appwrite (SANS createdAt)
-                await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
-                    code: code,
-                    type: codeType,
-                    used: false
-                });
+                  // Sauvegarde directe dans Appwrite avec permissions ouvertes
+   await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
+       code: code,
+       type: codeType,
+       used: false
+   }, [
+       Permission.read(Role.any()),
+       Permission.update(Role.any()) // Permet à l'utilisateur de le marquer comme utilisé
+   ]);
                 
                 generated.push({ code, type: codeType, used: false });
             }
