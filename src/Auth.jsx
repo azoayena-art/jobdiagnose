@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { account, ID, databases, storage, DB_ID, COLLECTIONS, BUCKET_ID } from './appwrite';
-import { Query } from 'appwrite'; // ️ CETTE LIGNE DOIT ÊTRE PRÉSENTE EXACTEMENT COMME CECI
+import { Query } from 'appwrite';
 import { Permission, Role } from 'appwrite';
 import * as pdfjsLib from 'pdfjs-dist';
 import jsPDF from 'jspdf';
