@@ -55,9 +55,7 @@ export default function Auth() {
             } else {
                 const newUser = await account.create(ID.unique(), email, password, name);
                 await account.createEmailPasswordSession(email, password);
-                await databases.createDocument(DB_ID, COLLECTIONS.USERS, ID.unique(), {
-                    userId: newUser.$id, jobTitle: '', experience: '', location: '', createdAt: new Date().toISOString()
-                }, [Permission.read(Role.user(newUser.$id)), Permission.update(Role.user(newUser.$id)), Permission.delete(Role.user(newUser.$id))]);
+                Permission.update(Role.user(newUser.$id)),
             }
             checkUser();
         } catch (err) { setError(err.message); }
