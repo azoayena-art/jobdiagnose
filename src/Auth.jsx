@@ -179,39 +179,37 @@ export default function Auth() {
         }
     };
 
-    const analyzeWithAI = async (text) => {
+        const analyzeWithAI = async (text) => {
         try {
-            const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-            if (!apiKey) throw new Error("Clé API OpenRouter manquante");
+            const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+            if (!apiKey) throw new Error("Clé API Groq manquante dans les variables d'environnement");
 
             const prompt = jobOfferText.trim() 
-                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
-                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
+                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
+                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
 
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
-                    'HTTP-Referer': window.location.origin,
-                    'X-Title': 'JobDiagnose MVP',
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'meta-llama/llama-3.3-70b-instruct:free',
+                    model: 'llama-3.3-70b-versatile', // Modèle puissant et stable sur Groq
                     messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.1
+                    temperature: 0.1,
+                    response_format: { type: "json_object" } // Force Groq à répondre en JSON pur
                 })
             });
 
             const data = await response.json();
             if (data.error) throw new Error(data.error.message);
 
+            // Récupération et nettoyage du texte JSON
             let rawContent = data.choices[0].message.content;
-            let jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0].replace(/'([^']+)'\s*:/g, '"$1":'));
-            }
-            throw new Error("JSON invalide");
+            rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+            
+            return JSON.parse(rawContent);
         } catch (error) {
             console.warn("⚠️ Erreur API, mode simulation :", error);
             return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
