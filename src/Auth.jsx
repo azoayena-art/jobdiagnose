@@ -197,7 +197,7 @@ export default function Auth() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'google/gemma-'
+                    model: 'google/gemma-2-9b-it:free'
                     messages: [{ role: 'user', content: prompt }],
                     temperature: 0.1
                 })
