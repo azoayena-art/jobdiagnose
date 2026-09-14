@@ -114,9 +114,11 @@ export default function Auth() {
             }
 
             // 2. Marquer le code comme utilisé dans Appwrite (SANS usedAt)
+                      // 2. Marquer le code comme utilisé dans Appwrite
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
                 used: true,
-                usedBy: user.$id
+                usedBy: user.$id,
+                usedAt: new Date().toISOString()
             });
 
             // 3. Activer le plan pour l'utilisateur
