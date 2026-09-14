@@ -197,7 +197,7 @@ export default function Auth() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'qwen/qwen-2.5-7b-instruct:free',
+                    model: 'nexaai/nex-n2.5-pro:free',
                     messages: [{ role: 'user', content: prompt }],
                     temperature: 0.1
                 })
