@@ -78,7 +78,7 @@ export default function Auth() {
         setActivationMessage('');
     };
 
-    const handleActivationClick = async () => {
+       const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
         const code = activationCode.trim().toUpperCase();
@@ -87,6 +87,12 @@ export default function Auth() {
         setIsActivating(true);
 
         try {
+            // 🕵️ LOGS DE VÉRIFICATION
+            console.log("🔍 CIBLE DE LA REQUÊTE :");
+            console.log("Database ID utilisé :", DB_ID);
+            console.log("Collection ID utilisée :", COLLECTIONS.CODES);
+            console.log("Code recherché :", code);
+
             // 1. Chercher le code dans Appwrite (Cloud)
             const response = await databases.listDocuments(DB_ID, COLLECTIONS.CODES, [
                 Query.equal('code', code),
@@ -113,17 +119,9 @@ export default function Auth() {
                 throw new Error('Préfixe de code non reconnu.');
             }
 
-            // 2. Marquer le code comme utilisé dans Appwrite (SANS usedAt)
-                      // 2. Marquer le code comme utilisé dans Appwrite
             // 2. Marquer le code comme utilisé dans Appwrite
-            console.log("🚀 ESPION : NOUVELLE VERSION DU CODE CHARGÉE !");
-            console.log("Données envoyées :", { used: true, usedBy: user.$id, usedAt: new Date().toISOString() });
-
-            await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
-                used: true,
-                usedBy: user.$id,
-                usedAt: new Date().toISOString()
-            });
+            console.log("📤 Envoi de la mise à jour pour le document ID :", codeData.$id);
+            
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
                 used: true,
                 usedBy: user.$id,
@@ -139,12 +137,12 @@ export default function Auth() {
             setShowActivationForm(false);
             setShowPaywall(false);
         } catch (err) {
+            console.error("🚨 ERREUR APPWRITE DÉTAILLÉE :", err);
             setError(err.message);
         } finally {
             setIsActivating(false);
         }
     };
-
     const extractTextFromPDF = async (file) => {
         try {
             setIsExtracting(true);
