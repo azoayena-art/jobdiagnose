@@ -120,12 +120,13 @@ export default function Auth() {
             }
 
             // 2. Marquer le code comme utilisé dans Appwrite
-            console.log("📤 Envoi de la mise à jour pour le document ID :", codeData.$id);
+                       // 2. Marquer le code comme utilisé dans Appwrite
+            console.log("🚀 TENTATIVE DE MISE À JOUR SANS usedAt");
             
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
                 used: true,
-                usedBy: user.$id,
-                usedAt: new Date().toISOString()
+                usedBy: user.$id
+                // usedAt a été retiré pour tester
             });
 
             // 3. Activer le plan pour l'utilisateur
