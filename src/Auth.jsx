@@ -115,6 +115,15 @@ export default function Auth() {
 
             // 2. Marquer le code comme utilisé dans Appwrite (SANS usedAt)
                       // 2. Marquer le code comme utilisé dans Appwrite
+            // 2. Marquer le code comme utilisé dans Appwrite
+            console.log("🚀 ESPION : NOUVELLE VERSION DU CODE CHARGÉE !");
+            console.log("Données envoyées :", { used: true, usedBy: user.$id, usedAt: new Date().toISOString() });
+
+            await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
+                used: true,
+                usedBy: user.$id,
+                usedAt: new Date().toISOString()
+            });
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
                 used: true,
                 usedBy: user.$id,
