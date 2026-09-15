@@ -179,43 +179,43 @@ export default function Auth() {
         }
     };
 
-        const analyzeWithAI = async (text) => {
+            const analyzeWithAI = async (text) => {
         try {
-            const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-            if (!apiKey) throw new Error("Clé API Groq manquante dans les variables d'environnement");
+            const accountId = import.meta.env.VITE_CF_ACCOUNT_ID;
+            const apiToken = import.meta.env.VITE_CF_API_TOKEN;
+            
+            if (!accountId || !apiToken) throw new Error("Identifiants Cloudflare manquants");
 
             const prompt = jobOfferText.trim() 
-                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
-                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
+                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide sans markdown. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
+                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide sans markdown. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            // Appel à l'API Cloudflare Workers AI (Llama 3.1 8B)
+            const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
+                    'Authorization': `Bearer ${apiToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile', // Modèle puissant et stable sur Groq
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.1,
-                    response_format: { type: "json_object" } // Force Groq à répondre en JSON pur
+                    messages: [{ role: 'user', content: prompt }]
                 })
             });
 
             const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
+            if (!data.success) throw new Error(data.errors?.[0]?.message || "Erreur Cloudflare AI");
 
             // Récupération et nettoyage du texte JSON
-            let rawContent = data.choices[0].message.content;
+            let rawContent = data.result.response;
+            // Nettoyage des blocs markdown si l'IA en ajoute
             rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
             
             return JSON.parse(rawContent);
         } catch (error) {
-            console.warn("⚠️ Erreur API, mode simulation :", error);
+            console.warn("⚠️ Erreur API Cloudflare, mode simulation :", error);
             return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
         }
     };
-
     const exportToPDF = () => {
         if (!aiAnalysis) return;
         const doc = new jsPDF();
