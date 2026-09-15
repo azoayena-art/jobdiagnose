@@ -134,7 +134,7 @@ export default function Auth() {
     const extractTextFromPDF = async (file) => {
         try {
             setIsExtracting(true);
-            setUploadMessage('📄 Extraction du texte en cours...');
+            setUploadMessage(' Extraction du texte en cours...');
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
@@ -166,36 +166,25 @@ export default function Auth() {
         }
     };
 
+    // 🚀 NOUVELLE FONCTION IA SÉCURISÉE VIA VERCEL
     const analyzeWithAI = async (text) => {
         try {
-            const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-            if (!apiKey) throw new Error("Clé API Groq manquante dans les variables d'environnement");
-
             const prompt = jobOfferText.trim() 
                 ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
                 : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
 
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            // Appel à notre propre API sécurisée sur Vercel (api/gemini.js)
+            const response = await fetch('/api/gemini', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                   model: 'llama3-8b-8192',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.1,
-                    response_format: { type: "json_object" }
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
             });
 
             const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-
-            let rawContent = data.choices[0].message.content;
-            rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
             
-            return JSON.parse(rawContent);
+            if (data.error) throw new Error(data.error);
+            
+            return data.result;
         } catch (error) {
             console.warn("⚠️ Erreur API, mode simulation :", error);
             return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
@@ -258,7 +247,7 @@ export default function Auth() {
     const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) {
-            setUploadMessage('❌ Veuillez sélectionner un fichier et vérifier le texte.');
+            setUploadMessage(' Veuillez sélectionner un fichier et vérifier le texte.');
             return;
         }
         if (userPlan === 'free' && freeAnalysisCount >= 1) {
@@ -310,7 +299,7 @@ export default function Auth() {
                         
                         <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white shadow-md">
                             <span className="text-xl">
-                                {userPlan === 'premium' ? '👑' : (userPlan === 'essentiel' ? '⭐' : '🆓')}
+                                {userPlan === 'premium' ? '👑' : (userPlan === 'essentiel' ? '⭐' : '')}
                             </span>
                             <span className={userPlan === 'premium' ? 'text-orange-600' : (userPlan === 'essentiel' ? 'text-blue-600' : 'text-gray-600')}>
                                 Plan {userPlan.toUpperCase()}
@@ -325,7 +314,7 @@ export default function Auth() {
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <div className="flex items-center gap-3 text-left">
-                                    <span className="text-3xl">🔑</span>
+                                    <span className="text-3xl"></span>
                                     <div>
                                         <p className="font-bold text-gray-900">Vous avez un code d'activation ?</p>
                                         <p className="text-sm text-gray-600">Entrez votre code reçu après paiement pour débloquer les fonctionnalités premium.</p>
@@ -409,7 +398,7 @@ export default function Auth() {
                                         🔑 J'ai un code
                                     </button>
                                     <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold text-center hover:bg-blue-700 transition-all">
-                                        🥉 Essentiel - 9,99€
+                                         Essentiel - 9,99€
                                     </a>
                                 </div>
                             </div>
@@ -447,7 +436,7 @@ export default function Auth() {
                             </div>
                             <div className="text-center mt-8">
                                 <button onClick={exportToPDF} className="px-8 py-4 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all">
-                                    📄 Télécharger mon rapport en PDF
+                                     Télécharger mon rapport en PDF
                                 </button>
                             </div>
                         </div>
