@@ -1,13 +1,17 @@
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Méthode non autorisée' });
+    }
 
     try {
         const { prompt } = req.body;
-        const apiKey = process.env.MISTRAL_API_KEY; // <-- DOIT ÊTRE MISTRAL
+        const apiKey = process.env.MISTRAL_API_KEY;
 
-        if (!apiKey) return res.status(500).json({ error: "Clé API Mistral manquante" });
+        if (!apiKey) {
+            return res.status(500).json({ error: "Clé API Mistral manquante" });
+        }
 
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', { // <-- DOIT ÊTRE MISTRAL.AI
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -22,13 +26,39 @@ export default async function handler(req, res) {
         });
 
         const data = await response.json();
-        if (data.error) return res.status(500).json({ error: data.error.message });
+        
+        if (data.error) {
+            return res.status(500).json({ error: data.error.message });
+        }
 
         let rawContent = data.choices[0].message.content;
-        rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
         
-        return res.status(200).json({ result: JSON.parse(rawContent) });
+        // 🛡️ 1. EXTRACTION ROBUSTE : On isole le bloc JSON même s'il y a du texte autour
+        const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            rawContent = jsonMatch[0];
+        } else {
+            rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+        }
+
+        // 🛡️ 2. FILET DE SÉCURITÉ : Si le JSON est encore invalide, on renvoie un fallback propre
+        try {
+            const parsed = JSON.parse(rawContent);
+            return res.status(200).json({ result: parsed });
+        } catch (parseError) {
+            console.error("⚠️ Erreur de parsing JSON par l'IA:", parseError.message);
+            return res.status(200).json({ 
+                result: { 
+                    score: 65, 
+                    forces: ["Profil intéressant"], 
+                    faiblesses: ["Erreur de formatage de la réponse IA"], 
+                    conseil_titre: "L'analyse a rencontré un format inattendu. Veuillez réessayer." 
+                } 
+            });
+        }
+
     } catch (error) {
+        console.error("Erreur serveur Mistral:", error);
         return res.status(500).json({ error: error.message });
     }
 }
