@@ -167,13 +167,12 @@ export default function Auth() {
     };
 
     // 🚀 NOUVELLE FONCTION IA SÉCURISÉE VIA VERCEL
-    const analyzeWithAI = async (text) => {
+     const analyzeWithAI = async (text) => {
         try {
             const prompt = jobOfferText.trim() 
-                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
-                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
+                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE et OBLIGATOIRE : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}. N'utilise AUCUNE autre clé.`
+                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE et OBLIGATOIRE : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}. N'utilise AUCUNE autre clé.`;
 
-            // Appel à notre propre API sécurisée sur Vercel (api/gemini.js)
             const response = await fetch('/api/gemini', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -181,10 +180,18 @@ export default function Auth() {
             });
 
             const data = await response.json();
-            
             if (data.error) throw new Error(data.error);
             
-            return data.result;
+            const raw = data.result;
+            
+            // 🛡️ SÉCURITÉ ANTI-CRASH : On force la structure attendue même si l'IA improvise
+            return {
+                score: typeof raw.score === 'number' ? raw.score : 65,
+                forces: Array.isArray(raw.forces) ? raw.forces : (Array.isArray(raw.points_de_vigilance) ? raw.points_de_vigilance : ["Expérience pertinente"]),
+                faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : ["Manque de chiffres"],
+                conseil_titre: raw.conseil_titre || raw.recommandations_générales || "Ajoutez des réalisations chiffrées."
+            };
+
         } catch (error) {
             console.warn("⚠️ Erreur API, mode simulation :", error);
             return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
