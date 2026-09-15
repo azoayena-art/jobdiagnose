@@ -54,7 +54,6 @@ export default function Auth() {
             } else {
                 const newUser = await account.create(ID.unique(), email, password, name);
                 await account.createEmailPasswordSession(email, password);
-                // La création dans la collection 'users' a été retirée car elle n'existe pas
             }
             checkUser();
         } catch (err) { 
@@ -78,7 +77,7 @@ export default function Auth() {
         setActivationMessage('');
     };
 
-       const handleActivationClick = async () => {
+    const handleActivationClick = async () => {
         setError('');
         setActivationMessage('');
         const code = activationCode.trim().toUpperCase();
@@ -87,13 +86,6 @@ export default function Auth() {
         setIsActivating(true);
 
         try {
-            // 🕵️ LOGS DE VÉRIFICATION
-            console.log("🔍 CIBLE DE LA REQUÊTE :");
-            console.log("Database ID utilisé :", DB_ID);
-            console.log("Collection ID utilisée :", COLLECTIONS.CODES);
-            console.log("Code recherché :", code);
-
-            // 1. Chercher le code dans Appwrite (Cloud)
             const response = await databases.listDocuments(DB_ID, COLLECTIONS.CODES, [
                 Query.equal('code', code),
                 Query.limit(1)
@@ -119,17 +111,12 @@ export default function Auth() {
                 throw new Error('Préfixe de code non reconnu.');
             }
 
-            // 2. Marquer le code comme utilisé dans Appwrite
-                       // 2. Marquer le code comme utilisé dans Appwrite
-            console.log("🚀 TENTATIVE DE MISE À JOUR SANS usedAt");
-            
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, {
                 used: true,
-                usedBy: user.$id
-                // usedAt a été retiré pour tester
+                usedBy: user.$id,
+                usedAt: new Date().toISOString()
             });
 
-            // 3. Activer le plan pour l'utilisateur
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
 
@@ -138,12 +125,12 @@ export default function Auth() {
             setShowActivationForm(false);
             setShowPaywall(false);
         } catch (err) {
-            console.error("🚨 ERREUR APPWRITE DÉTAILLÉE :", err);
             setError(err.message);
         } finally {
             setIsActivating(false);
         }
     };
+
     const extractTextFromPDF = async (file) => {
         try {
             setIsExtracting(true);
@@ -179,43 +166,42 @@ export default function Auth() {
         }
     };
 
-            const analyzeWithAI = async (text) => {
+    const analyzeWithAI = async (text) => {
         try {
-            const accountId = import.meta.env.VITE_CF_ACCOUNT_ID;
-            const apiToken = import.meta.env.VITE_CF_API_TOKEN;
-            
-            if (!accountId || !apiToken) throw new Error("Identifiants Cloudflare manquants");
+            const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+            if (!apiKey) throw new Error("Clé API Groq manquante dans les variables d'environnement");
 
             const prompt = jobOfferText.trim() 
-                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide sans markdown. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
-                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide sans markdown. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
+                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`
+                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure exacte : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}`;
 
-            // Appel à l'API Cloudflare Workers AI (Llama 3.1 8B)
-            const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`, {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${apiToken}`,
+                    'Authorization': `Bearer ${apiKey}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    messages: [{ role: 'user', content: prompt }]
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.1,
+                    response_format: { type: "json_object" }
                 })
             });
 
             const data = await response.json();
-            if (!data.success) throw new Error(data.errors?.[0]?.message || "Erreur Cloudflare AI");
+            if (data.error) throw new Error(data.error.message);
 
-            // Récupération et nettoyage du texte JSON
-            let rawContent = data.result.response;
-            // Nettoyage des blocs markdown si l'IA en ajoute
+            let rawContent = data.choices[0].message.content;
             rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
             
             return JSON.parse(rawContent);
         } catch (error) {
-            console.warn("⚠️ Erreur API Cloudflare, mode simulation :", error);
+            console.warn("⚠️ Erreur API, mode simulation :", error);
             return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
         }
     };
+
     const exportToPDF = () => {
         if (!aiAnalysis) return;
         const doc = new jsPDF();
