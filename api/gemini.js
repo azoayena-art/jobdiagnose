@@ -5,22 +5,24 @@ export default async function handler(req, res) {
 
     try {
         const { prompt } = req.body;
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.MISTRAL_API_KEY;
 
         if (!apiKey) {
-            return res.status(500).json({ error: "Clé API manquante sur le serveur" });
+            return res.status(500).json({ error: "Clé API Mistral manquante" });
         }
 
-        // ✅ ENDPOINT STABLE DE PRODUCTION (v1 au lieu de v1beta)
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // Appel à l'API Mistral (compatible OpenAI)
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.1,
-                    responseMimeType: "application/json"
-                }
+                model: 'open-mistral-nemo', // Modèle gratuit/excellent, parfait pour le français et le JSON
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.1,
+                response_format: { type: "json_object" } // Force Mistral à répondre en JSON pur
             })
         });
 
@@ -30,13 +32,14 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: data.error.message });
         }
 
-        let rawContent = data.candidates[0].content.parts[0].text;
+        // Nettoyage et extraction du JSON
+        let rawContent = data.choices[0].message.content;
         rawContent = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
         
         return res.status(200).json({ result: JSON.parse(rawContent) });
 
     } catch (error) {
-        console.error("Erreur serveur Gemini:", error);
+        console.error("Erreur serveur Mistral:", error);
         return res.status(500).json({ error: error.message });
     }
 }
