@@ -182,7 +182,7 @@ export default function Auth() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
+                   model: 'llama-3.1-70b-versatile',
                     messages: [{ role: 'user', content: prompt }],
                     temperature: 0.1,
                     response_format: { type: "json_object" }
