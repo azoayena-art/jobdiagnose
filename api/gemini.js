@@ -15,21 +15,21 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'align': 'center'
-                },
-                body: JSON.stringify({
-                    model: 'open-mistral-nemo',
-                    messages: [
-                        { 
-                            role: 'system', 
-                            content: 'Tu es une API strictement formatée. Tu dois répondre UNIQUEMENT avec un objet JSON valide. N\'écris ABSOLUMENT AUCUN texte avant ou après les accolades. N\'utilise PAS de balises markdown comme ```json. Structure OBLIGATOIRE : {"score": nombre, "forces": ["texte"], "faiblesses": ["texte"], "conseil_titre": "texte"}.' 
-                        },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.1,
-                    response_format: { type: "json_object" }
-                })
-            });
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'open-mistral-nemo',
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: 'Tu es une API strictement formatée. Tu dois répondre UNIQUEMENT avec un objet JSON valide. N\'écris ABSOLUMENT AUCUN texte avant ou après les accolades. N\'utilise PAS de balises markdown. Structure OBLIGATOIRE : {"score": nombre, "forces": ["texte"], "faiblesses": ["texte"], "conseil_titre": "texte"}.' 
+                    },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.1,
+                response_format: { type: "json_object" }
+            })
+        });
 
         const data = await response.json();
         
@@ -39,10 +39,10 @@ export default async function handler(req, res) {
 
         let rawContent = data.choices[0].message.content;
         
-        // Nettoyage agressif des balises markdown en début et fin de chaîne
+        // Nettoyage agressif des balises markdown
         rawContent = rawContent.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         
-        // Extraction du bloc JSON au cas où il y aurait du texte résiduel
+        // Extraction du bloc JSON
         const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             rawContent = jsonMatch[0];
@@ -52,15 +52,13 @@ export default async function handler(req, res) {
             const parsed = JSON.parse(rawContent);
             return res.status(200).json({ result: parsed });
         } catch (parseError) {
-            // 🕵️ LOG CRUCIAL : On affiche ce que Mistral a réellement envoyé
-            console.error("⚠️ ERREUR PARSING JSON - CONTENU BRUT DE MISTRAL :", rawContent);
-            
+            console.error("⚠️ ERREUR PARSING JSON - CONTENU BRUT :", rawContent);
             return res.status(200).json({ 
                 result: { 
                     score: 65, 
                     forces: ["Profil intéressant"], 
-                    faiblesses: ["Détail brut: " + rawContent.substring(0, 150) + "..."], 
-                    conseil_titre: "Erreur de format. Vérifiez les logs Vercel." 
+                    faiblesses: ["Format brut: " + rawContent.substring(0, 100)], 
+                    conseil_titre: "Erreur de format. Réessayez." 
                 } 
             });
         }
