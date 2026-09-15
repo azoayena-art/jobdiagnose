@@ -11,8 +11,8 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: "Clé API manquante sur le serveur" });
         }
 
-        // ✅ MODÈLE MIS À JOUR : gemini-2.0-flash (gratuit et stable)
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        // ✅ ENDPOINT STABLE DE PRODUCTION (v1 au lieu de v1beta)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -36,6 +36,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ result: JSON.parse(rawContent) });
 
     } catch (error) {
+        console.error("Erreur serveur Gemini:", error);
         return res.status(500).json({ error: error.message });
     }
 }
