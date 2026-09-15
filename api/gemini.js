@@ -5,13 +5,14 @@ export default async function handler(req, res) {
 
     try {
         const { prompt } = req.body;
-        const apiKey = process.env.GEMINI_API_KEY; 
+        const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
             return res.status(500).json({ error: "Clé API manquante sur le serveur" });
         }
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // ✅ MODÈLE MIS À JOUR : gemini-2.0-flash (gratuit et stable)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
