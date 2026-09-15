@@ -198,57 +198,383 @@ export default function Auth() {
         }
     };
 
-    const exportToPDF = () => {
+        const exportToPDF = () => {
         if (!aiAnalysis) return;
+        
         const doc = new jsPDF();
         const pageWidth = 210;
-        doc.setFillColor(30, 58, 138);
-        doc.rect(0, 0, pageWidth, 50, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(28);
-        doc.setFont('helvetica', 'bold');
-        doc.text('JobDiagnose', pageWidth / 2, 22, { align: 'center' });
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Rapport d'analyse - ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 35, { align: 'center' });
-        doc.text(`Candidat : ${user.name}`, pageWidth / 2, 45, { align: 'center' });
+        const margin = 20;
+        const contentWidth = pageWidth - (margin * 2);
+        let yPos = 0;
+
+        // ═══════════════════════════════════════════════════════
+        // PAGE 1 : COUVERTURE & RÉSUMÉ EXÉCUTIF
+        // ═══════════════════════════════════════════════════════
         
-        let yPos = 65;
+        // Bandeau bleu en haut
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 60, 'F');
+        
+        // Titre principal
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(32);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JobDiagnose', pageWidth / 2, 25, { align: 'center' });
+        
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Rapport d\'Analyse Professionnelle de CV', pageWidth / 2, 38, { align: 'center' });
+        
+        doc.setFontSize(10);
+        doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, pageWidth / 2, 50, { align: 'center' });
+
+        // Infos candidat
+        yPos = 75;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CANDIDAT', margin, yPos);
+        yPos += 8;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Nom : ${user.name}`, margin, yPos);
+        yPos += 6;
+        doc.text(`Email : ${user.email}`, margin, yPos);
+        yPos += 6;
+        const planLabel = userPlan === 'premium' ? 'Premium' : (userPlan === 'essentiel' ? 'Essentiel' : 'Gratuit');
+        doc.text(`Plan : ${planLabel}`, margin, yPos);
+
+        // Bloc Score
+        yPos = 110;
+        doc.setFillColor(240, 245, 255);
+        doc.roundedRect(margin, yPos, contentWidth, 50, 3, 3, 'F');
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(margin, yPos, contentWidth, 50, 3, 3, 'S');
+        
+        yPos += 15;
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SCORE GLOBAL DE VOTRE CV', pageWidth / 2, yPos, { align: 'center' });
+        
+        yPos += 20;
+        doc.setFontSize(36);
+        doc.setTextColor(aiAnalysis.score >= 70 ? 34 : (aiAnalysis.score >= 50 ? 234 : 220), 
+                         aiAnalysis.score >= 70 ? 197 : (aiAnalysis.score >= 50 ? 179 : 38), 
+                         aiAnalysis.score >= 70 ? 94 : (aiAnalysis.score >= 50 ? 8 : 38));
+        doc.text(`${aiAnalysis.score}/100`, pageWidth / 2, yPos, { align: 'center' });
+
+        // Barre de progression visuelle
+        yPos += 10;
+        const barWidth = 120;
+        const barX = (pageWidth - barWidth) / 2;
+        doc.setFillColor(220, 220, 220);
+        doc.rect(barX, yPos, barWidth, 6, 'F');
+        doc.setFillColor(30, 58, 138);
+        doc.rect(barX, yPos, (barWidth * aiAnalysis.score) / 100, 6, 'F');
+
+        // Résumé exécutif
+        yPos = 180;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('RÉSUMÉ EXÉCUTIF', margin, yPos);
+        yPos += 3;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.8);
+        doc.line(margin, yPos, margin + 50, yPos);
+        yPos += 10;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100. ${
+            aiAnalysis.score >= 70 ? 'Il présente de solides atouts qui le rendent compétitif sur le marché.' : 
+            aiAnalysis.score >= 50 ? 'Il contient des éléments pertinents mais nécessite des améliorations ciblées.' : 
+            'Il nécessite des retravail importants pour être compétitif.'
+        } Ce rapport détaille vos points forts, les axes d'amélioration et un plan d'action concret.`;
+        
+        const resumeLines = doc.splitTextToSize(resumeText, contentWidth);
+        doc.text(resumeLines, margin, yPos);
+        yPos += resumeLines.length * 5 + 10;
+
+        // Conseil principal mis en avant
+        doc.setFillColor(255, 248, 220);
+        doc.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'F');
+        doc.setDrawColor(218, 165, 32);
+        doc.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'S');
+        
+        yPos += 8;
+        doc.setTextColor(139, 90, 0);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CONSEIL CLÉ :', margin + 5, yPos);
+        yPos += 6;
+        doc.setFont('helvetica', 'normal');
+        const conseilLines = doc.splitTextToSize(aiAnalysis.conseil_titre || "Aucun conseil disponible.", contentWidth - 10);
+        doc.text(conseilLines, margin + 5, yPos);
+
+        // ══════════════════════════════════════════════════════
+        // PAGE 2 : ANALYSE DÉTAILLÉE
+        // ═══════════════════════════════════════════════════════
+        doc.addPage();
+        yPos = 20;
+
+        // En-tête page 2
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JobDiagnose - Analyse Détaillée', margin, 10);
+        doc.text('Page 2/3', pageWidth - margin, 10, { align: 'right' });
+
+        yPos = 30;
         doc.setTextColor(30, 30, 30);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Score : ${aiAnalysis.score}/100`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 20;
+        doc.text('ANALYSE DÉTAILLÉE', margin, yPos);
+        yPos += 5;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.8);
+        doc.line(margin, yPos, margin + 60, yPos);
+        yPos += 12;
 
+        // Bloc Points Forts
+        doc.setFillColor(232, 245, 233);
+        doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+        doc.setTextColor(27, 94, 32);
         doc.setFontSize(12);
-        doc.text('Conseil personnalisé :', 20, yPos);
-        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.text('✨  POINTS FORTS IDENTIFIÉS', margin + 5, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(30, 30, 30);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        const lines = doc.splitTextToSize(aiAnalysis.conseil_titre, 170);
-        doc.text(lines, 20, yPos);
-        yPos += lines.length * 6 + 15;
+        
+        if (aiAnalysis.forces && aiAnalysis.forces.length > 0) {
+            aiAnalysis.forces.forEach((force, index) => {
+                // Vérifier si on doit ajouter une nouvelle page
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                // Icône check
+                doc.setTextColor(27, 94, 32);
+                doc.setFont('helvetica', 'bold');
+                doc.text('✓', margin + 2, yPos);
+                
+                // Texte
+                doc.setTextColor(30, 30, 30);
+                doc.setFont('helvetica', 'normal');
+                const forceLines = doc.splitTextToSize(force, contentWidth - 15);
+                doc.text(forceLines, margin + 10, yPos);
+                yPos += forceLines.length * 5 + 4;
+            });
+        } else {
+            doc.text('Aucun point fort identifié.', margin + 10, yPos);
+            yPos += 10;
+        }
 
+        yPos += 5;
+
+        // Bloc Axes d'Amélioration
+        doc.setFillColor(255, 243, 224);
+        doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+        doc.setTextColor(230, 81, 0);
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Points Forts :', 20, yPos);
-        yPos += 8;
+        doc.text('  AXES D\'AMÉLIORATION', margin + 5, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(30, 30, 30);
         doc.setFont('helvetica', 'normal');
-        aiAnalysis.forces.forEach((f, i) => {
-            doc.text(`+ ${f}`, 25, yPos);
+        doc.setFontSize(10);
+        
+        if (aiAnalysis.faiblesses && aiAnalysis.faiblesses.length > 0) {
+            aiAnalysis.faiblesses.forEach((faiblesse, index) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                doc.setTextColor(230, 81, 0);
+                doc.setFont('helvetica', 'bold');
+                doc.text('→', margin + 2, yPos);
+                
+                doc.setTextColor(30, 30, 30);
+                doc.setFont('helvetica', 'normal');
+                const faibLines = doc.splitTextToSize(faiblesse, contentWidth - 15);
+                doc.text(faibLines, margin + 10, yPos);
+                yPos += faibLines.length * 5 + 4;
+            });
+        } else {
+            doc.text('Aucun axe d\'amélioration identifié.', margin + 10, yPos);
+            yPos += 10;
+        }
+
+        // Bloc commentaire sur l'offre si présente
+        if (jobOfferText.trim()) {
+            yPos += 10;
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            doc.setFillColor(232, 245, 253);
+            doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+            doc.setTextColor(13, 71, 161);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('🎯  ANALYSE DE MATCHING AVEC L\'OFFRE', margin + 5, yPos + 7);
+            yPos += 15;
+            
+            doc.setTextColor(30, 30, 30);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            const matchText = `Votre CV a été analysé en correspondance avec l'offre d'emploi fournie. Le score de ${aiAnalysis.score}/100 reflète le degré d'adéquation entre votre profil et les exigences du poste.`;
+            const matchLines = doc.splitTextToSize(matchText, contentWidth);
+            doc.text(matchLines, margin, yPos);
+            yPos += matchLines.length * 5;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // PAGE 3 : PLAN D'ACTION & CONCLUSION
+        // ═══════════════════════════════════════════════════════
+        doc.addPage();
+        yPos = 20;
+
+        // En-tête page 3
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JobDiagnose - Plan d\'Action', margin, 10);
+        doc.text('Page 3/3', pageWidth - margin, 10, { align: 'right' });
+
+        yPos = 30;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PLAN D\'ACTION PRIORISÉ', margin, yPos);
+        yPos += 5;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.8);
+        doc.line(margin, yPos, margin + 70, yPos);
+        yPos += 12;
+
+        // Instructions concrètes
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(30, 30, 30);
+
+        const actions = [
+            { priority: 'PRIORITÉ HAUTE', color: [220, 38, 38], text: 'Corrigez immédiatement les axes d\'amélioration identifiés dans la page précédente. Ce sont les points bloquants pour les recruteurs.' },
+            { priority: 'PRIORITÉ MOYENNE', color: [234, 179, 8], text: 'Enrichissez votre CV avec des réalisations chiffrées et des mots-clés pertinents pour votre secteur.' },
+            { priority: 'PRIORITÉ BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme, vérifiez l\'orthographe et adaptez le CV à chaque offre spécifique.' }
+        ];
+
+        actions.forEach((action, index) => {
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            // Bloc coloré pour chaque priorité
+            doc.setFillColor(action.color[0], action.color[1], action.color[2]);
+            doc.roundedRect(margin, yPos, contentWidth, 8, 1, 1, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text(action.priority, margin + 3, yPos + 5.5);
+            yPos += 12;
+            
+            doc.setTextColor(30, 30, 30);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            const actionLines = doc.splitTextToSize(action.text, contentWidth);
+            doc.text(actionLines, margin + 5, yPos);
+            yPos += actionLines.length * 5 + 8;
+        });
+
+        // Bloc conseils de mise en forme
+        yPos += 5;
+        if (yPos > 230) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        doc.setFillColor(245, 245, 250);
+        doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('📋  CHECKLIST FINALE', margin + 5, yPos + 7);
+        yPos += 15;
+
+        doc.setTextColor(30, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        
+        const checklist = [
+            '☐  CV tenu sur 1 à 2 pages maximum',
+            '☐  Photo professionnelle (si pertinente pour le secteur)',
+            '  Titre de poste clair et aligné avec l\'offre cible',
+            '☐  Résumé professionnel en 3-4 lignes en haut du CV',
+            '☐  Expériences avec verbes d\'action et résultats chiffrés',
+            '☐  Compétences techniques et soft skills bien séparées',
+            '☐  Formation et certifications à jour',
+            '☐  Aucune faute d\'orthographe (faire relire)',
+            '  Format PDF uniquement pour l\'envoi',
+            '☐  Nom du fichier professionnel (ex: Prenom_Nom_CV.pdf)'
+        ];
+
+        checklist.forEach(item => {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.text(item, margin + 5, yPos);
             yPos += 6;
         });
+
+        // Conclusion
         yPos += 10;
-
+        if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        doc.setFillColor(30, 58, 138);
+        doc.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'F');
+        yPos += 8;
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.text('Axes d\'Amélioration :', 20, yPos);
+        doc.text('CONCLUSION', pageWidth / 2, yPos, { align: 'center' });
         yPos += 8;
         doc.setFont('helvetica', 'normal');
-        aiAnalysis.faiblesses.forEach((f, i) => {
-            doc.text(`- ${f}`, 25, yPos);
-            yPos += 6;
-        });
+        doc.setFontSize(9);
+        const conclusionText = 'Ce rapport a été généré automatiquement par JobDiagnose. Il constitue une base de travail pour optimiser votre CV. N\'hésitez pas à le faire relire par un professionnel et à l\'adapter à chaque candidature.';
+        const conclusionLines = doc.splitTextToSize(conclusionText, contentWidth - 10);
+        doc.text(conclusionLines, pageWidth / 2, yPos, { align: 'center' });
 
-        doc.save(`JobDiagnose_${user.name.replace(/\s+/g, '_')}.pdf`);
+        // Footer sur toutes les pages
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`JobDiagnose © ${new Date().getFullYear()} - Rapport confidentiel`, pageWidth / 2, 290, { align: 'center' });
+            doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, 290, { align: 'right' });
+        }
+
+        // Sauvegarde
+        doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
     const handleUploadCV = async (e) => {
