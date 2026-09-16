@@ -296,13 +296,13 @@ export default function Landing() {
                                 <li><button onClick={() => scrollToSection('faq')} className="hover:text-white transition-colors cursor-pointer">FAQ</button></li>
                             </ul>
                         </div>
-                        <div>
-                            <h4 className="text-white font-semibold mb-4">Légal</h4>
-                            <ul className="space-y-2 text-sm">
-                                <li><a href="#" className="hover:text-white transition-colors">CGU</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Confidentialité</a></li>
-                            </ul>
-                        </div>
+                       <div>
+    <h4 className="text-white font-semibold mb-4">Légal</h4>
+    <ul className="space-y-2 text-sm">
+        <li><Link to="/legal" className="hover:text-white transition-colors">Mentions légales & CGU</Link></li>
+        <li><Link to="/legal" className="hover:text-white transition-colors">Politique de confidentialité</Link></li>
+    </ul>
+</div>
                         <div>
                             <h4 className="text-white font-semibold mb-4">Contact</h4>
                             <ul className="space-y-2 text-sm">

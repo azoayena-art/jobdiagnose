@@ -3,6 +3,7 @@ import Landing from './Landing';
 import Auth from './Auth';
 import Admin from './Admin';
 import Dashboard from './Dashboard';
+import Legal from './Legal'; // <-- AJOUTÉ
 
 function App() {
     return (
@@ -12,6 +13,7 @@ function App() {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/legal" element={<Legal />} /> {/* <-- AJOUTÉ */}
             </Routes>
         </Router>
     );
