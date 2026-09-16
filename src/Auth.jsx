@@ -11,7 +11,7 @@ export default function Auth() {
     const [searchParams] = useSearchParams();
     
     // États d'authentification
-    const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'forgot', 'reset'
+    const [authMode, setAuthMode] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -44,10 +44,15 @@ export default function Auth() {
     const [isActivating, setIsActivating] = useState(false);
 
     useEffect(() => { 
-        checkUser(); 
-        // Vérifier si l'utilisateur vient d'un e-mail de réinitialisation
-        if (searchParams.get('userId') && searchParams.get('secret')) {
+        // Vérifier SI l'utilisateur vient d'un e-mail de réinitialisation (AVANT checkUser)
+        const userId = searchParams.get('userId');
+        const secret = searchParams.get('secret');
+        
+        if (userId && secret) {
+            console.log('🔑 Paramètres de recovery détectés:', { userId, secret });
             setAuthMode('reset');
+        } else {
+            checkUser();
         }
     }, []);
 
@@ -78,7 +83,9 @@ export default function Auth() {
         e.preventDefault();
         setError(''); setMessage('');
         try {
-            await account.createRecovery(recoveryEmail, window.location.origin + '/#/auth');
+            // URL sans hash car on utilise BrowserRouter
+            const redirectUrl = window.location.origin + '/auth';
+            await account.createRecovery(recoveryEmail, redirectUrl);
             setMessage('Un e-mail de réinitialisation a été envoyé. Vérifiez votre boîte de réception (et vos spams).');
         } catch (err) { setError(err.message); }
     };
@@ -93,6 +100,13 @@ export default function Auth() {
         try {
             const userId = searchParams.get('userId');
             const secret = searchParams.get('secret');
+            
+            if (!userId || !secret) {
+                setError('Lien de réinitialisation invalide. Veuillez redemander un nouveau lien.');
+                setAuthMode('forgot');
+                return;
+            }
+            
             await account.updateRecovery(userId, secret, newPassword, confirmPassword);
             setMessage('Mot de passe réinitialisé avec succès ! Vous pouvez maintenant vous connecter.');
             setAuthMode('login');
