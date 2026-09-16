@@ -5,313 +5,268 @@ import { Query } from 'appwrite';
 
 export default function Landing() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [openFaq, setOpenFaq] = useState(null);
     const [pricingList, setPricingList] = useState([]);
-    const toggleFaq = (index) => setOpenFaq(openFaq === index ? null : index);
-
-    const scrollToSection = (id) => {
-        const el = document.getElementById(id);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-    };
 
     useEffect(() => {
-        const loadPricing = async () => {
-            try {
-                const res = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING, [Query.orderAsc('order')]);
-                setPricingList(res.documents);
-            } catch (e) { console.error('Erreur pricing:', e); }
-        };
         loadPricing();
     }, []);
 
-    const features = [
-        { bg: "bg-blue-100", text: "text-blue-600", title: "Analyse IA précise", desc: "Notre IA évalue votre CV selon 50+ critères utilisés par les recruteurs professionnels." },
-        { bg: "bg-green-100", text: "text-green-600", title: "Rapport PDF pro", desc: "Recevez un rapport de 3 pages avec score visuel, points forts et plan d'action." },
-        { bg: "bg-purple-100", text: "text-purple-600", title: "Matching offre", desc: "Collez l'offre qui vous intéresse et découvrez à quel point votre CV correspond." },
-        { bg: "bg-orange-100", text: "text-orange-600", title: "100% confidentiel", desc: "Vos données sont cryptées et jamais partagées. Confidentialité totale garantie." },
-        { bg: "bg-red-100", text: "text-red-600", title: "Résultats en 30s", desc: "Pas besoin d'attendre. Uploadez votre CV et recevez votre analyse instantanément." },
-        { bg: "bg-indigo-100", text: "text-indigo-600", title: "Plans flexibles", desc: "Commencez gratuitement. Passez au Premium pour la rédaction par expert." }
-    ];
+    const loadPricing = async () => {
+        try {
+            const res = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING, [Query.orderAsc('order')]);
+            setPricingList(res.documents);
+        } catch (e) { 
+            console.error("Erreur chargement tarifs:", e); 
+        }
+    };
+
+    const scrollToSection = (id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+            setMobileMenuOpen(false);
+        }
+    };
 
     return (
-        <div className="min-h-screen bg-white font-sans">
+        <div className="min-h-screen bg-white">
+            {/* Navbar */}
             <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-50">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-                <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
-            </Link>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <Link to="/" className="flex items-center gap-2">
+                            <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
+                        </Link>
 
-            {/* Menu Desktop */}
-            <div className="hidden md:flex items-center gap-8">
-                <button onClick={() => scrollToSection('features')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Fonctionnalités</button>
-                <button onClick={() => scrollToSection('pricing')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Tarifs</button>
-                <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">FAQ</button>
-            </div>
-            <div className="hidden md:flex items-center gap-3">
-                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Mon espace</Link>
-                <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">Commencer</Link>
-            </div>
-
-            {/* Bouton Hamburger Mobile */}
-            <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-                {mobileMenuOpen ? (
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                ) : (
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                )}
-            </button>
-        </div>
-
-        {/* Menu Mobile Déroulant */}
-        {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
-                <button
-                    onClick={() => { scrollToSection('features'); setMobileMenuOpen(false); }}
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                     Fonctionnalités
-                </button>
-                <button
-                    onClick={() => { scrollToSection('pricing'); setMobileMenuOpen(false); }}
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                     Tarifs
-                </button>
-                <button
-                    onClick={() => { scrollToSection('faq'); setMobileMenuOpen(false); }}
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                    ❓ FAQ
-                </button>
-                <Link
-                    to="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                    📊 Mon espace
-                </Link>
-                <Link
-                    to="/auth"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold text-center hover:bg-blue-700 transition-colors"
-                >
-                    Commencer gratuitement →
-                </Link>
-            </div>
-        )}
-    </div>
-</nav>
-
-            <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-                <div className="max-w-7xl mx-auto text-center">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
-                        <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-                        Nouveau : Analyse IA en 30 secondes
-                    </div>
-                    <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-                        Transformez votre CV en <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">machine à entretiens</span>
-                    </h1>
-                    <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-                        Notre IA analyse votre CV comme un recruteur professionnel. Obtenez un score précis, des conseils personnalisés et un plan d'action concret.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                        <Link to="/auth" className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">Analyser mon CV gratuitement →</Link>
-                        <button onClick={() => scrollToSection('features')} className="px-8 py-4 bg-white text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all border border-gray-200 cursor-pointer">Voir comment ça marche</button>
-                    </div>
-                    <div className="flex flex-wrap justify-center items-center gap-8 text-gray-500 text-sm">
-                        <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">M</div>
-                                <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">T</div>
-                                <div className="w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">S</div>
-                            </div>
-                            <span className="font-medium">+2 500 candidats aidés</span>
+                        <div className="hidden md:flex items-center gap-8">
+                            <button onClick={() => scrollToSection('features')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Fonctionnalités</button>
+                            <button onClick={() => scrollToSection('pricing')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Tarifs</button>
+                            <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">FAQ</button>
                         </div>
-                        <div className="flex items-center gap-1"><span className="text-yellow-400 text-lg">★★★★★</span><span className="font-medium">4.9/5 sur ComeUp</span></div>
-                        <div className="flex items-center gap-2"><span className="text-green-600 font-bold text-lg">✓</span><span className="font-medium">100% confidentiel</span></div>
+                        <div className="hidden md:flex items-center gap-3">
+                            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Mon espace</Link>
+                            <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">Commencer</Link>
+                        </div>
+
+                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                            {mobileMenuOpen ? (
+                                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            ) : (
+                                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                            )}
+                        </button>
+                    </div>
+
+                    {mobileMenuOpen && (
+                        <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
+                            <button onClick={() => scrollToSection('features')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">Fonctionnalités</button>
+                            <button onClick={() => scrollToSection('pricing')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">Tarifs</button>
+                            <button onClick={() => scrollToSection('faq')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">FAQ</button>
+                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">📊 Mon espace</Link>
+                            <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold text-center hover:bg-blue-700">Commencer gratuitement →</Link>
+                        </div>
+                    )}
+                </div>
+            </nav>
+
+            {/* Hero Section */}
+            <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 via-white to-blue-50">
+                <div className="max-w-4xl mx-auto text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-sm font-semibold mb-6 border border-blue-100">
+                        <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                        Propulsé par l'Intelligence Artificielle
+                    </div>
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight mb-6">
+                        Transformez votre CV en <span className="text-blue-600">machine à entretiens</span>
+                    </h1>
+                    <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                        Obtenez un score précis, des conseils personnalisés et un rapport PDF professionnel en 30 secondes. 
+                        Nos algorithmes analysent votre CV comme le ferait un recruteur expert.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Link to="/auth" className="px-8 py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 text-lg">
+                            Analyser mon CV gratuitement →
+                        </Link>
+                        <button onClick={() => scrollToSection('features')} className="px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-lg">
+                            Voir comment ça marche
+                        </button>
+                    </div>
+                    <div className="mt-12 flex items-center justify-center gap-8 text-sm text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            3 analyses gratuites
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            Rapport PDF immédiat
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            100% confidentiel
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white border-y border-gray-100">
-                <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                        <div><div className="text-4xl font-bold text-gray-900 mb-2">+87%</div><div className="text-gray-600">de taux de réponse</div></div>
-                        <div><div className="text-4xl font-bold text-gray-900 mb-2">30s</div><div className="text-gray-600">pour l'analyse complète</div></div>
-                        <div><div className="text-4xl font-bold text-gray-900 mb-2">2 500+</div><div className="text-gray-600">CV analysés</div></div>
-                        <div><div className="text-4xl font-bold text-gray-900 mb-2">9/10</div><div className="text-gray-600">recommandent JobDiagnose</div></div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-                <div className="max-w-7xl mx-auto">
+            {/* Features Section */}
+            <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+                <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Tout ce dont vous avez besoin pour réussir</h2>
-                        <p className="text-xl text-gray-600 max-w-3xl mx-auto">Une suite complète d'outils propulsés par l'IA pour optimiser votre CV.</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Pourquoi choisir JobDiagnose ?</h2>
+                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">Une analyse complète et professionnelle pour maximiser vos chances d'embauche.</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        {features.map((f, i) => (
-                            <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow border border-gray-100">
-                                <div className={`w-12 h-12 ${f.bg} rounded-xl flex items-center justify-center mb-6`}>
-                                    <svg className={`w-6 h-6 ${f.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">{f.title}</h3>
-                                <p className="text-gray-600 leading-relaxed">{f.desc}</p>
+                        {[
+                            { icon: '⚡', title: 'Analyse en 30 secondes', desc: 'Notre IA traite votre CV instantanément et identifie les points forts et les axes d\'amélioration.' },
+                            { icon: '🎯', title: 'Matching avec l\'offre', desc: 'Collez la description du poste et obtenez un score de compatibilité précis avec des conseils ciblés.' },
+                            { icon: '📄', title: 'Rapport PDF Pro', desc: 'Téléchargez un rapport détaillé de 3 pages avec un plan d\'action concret pour optimiser votre CV.' }
+                        ].map((feature, i) => (
+                            <div key={i} className="p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-lg transition-shadow">
+                                <div className="text-4xl mb-4">{feature.icon}</div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                                <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-                <div className="max-w-7xl mx-auto">
+            {/* Pricing Section */}
+            <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+                <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Comment ça marche ?</h2>
-                        <p className="text-xl text-gray-600">3 étapes simples pour transformer votre CV</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Des tarifs simples et transparents</h2>
+                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">Commencez gratuitement, passez au niveau supérieur quand vous êtes prêt.</p>
                     </div>
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {[{n:"1",t:"Uploadez votre CV",d:"Glissez-déposez votre CV au format PDF. Notre IA extrait automatiquement le texte."},{n:"2",t:"Recevez l'analyse IA",d:"En 30 secondes, obtenez un score sur 100, vos points forts et un conseil personnalisé."},{n:"3",t:"Téléchargez le rapport",d:"Recevez un rapport PDF professionnel de 3 pages avec plan d'action détaillé."}].map((s,i) => (
-                            <div key={i} className="text-center">
-                                <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">{s.n}</div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">{s.t}</h3>
-                                <p className="text-gray-600">{s.d}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Ce que disent nos utilisateurs</h2>
-                        <p className="text-xl text-gray-600">Rejoignez plus de 2 500 candidats qui ont transformé leur recherche</p>
-                    </div>
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {[{n:"Marie L.",r:"Consultante Marketing",t:"J'ai augmenté mon taux de réponse de 80% après avoir suivi les conseils de JobDiagnose.",c:"bg-blue-500"},{n:"Thomas D.",r:"Développeur Full-Stack",t:"Le rapport PDF est ultra professionnel. J'ai décroché 3 entretiens la semaine suivante.",c:"bg-green-500"},{n:"Sophie M.",r:"Chef de Projet",t:"La fonctionnalité de matching avec l'offre d'emploi est géniale. J'adapte mon CV pour chaque candidature.",c:"bg-purple-500"}].map((t,i) => (
-                            <div key={i} className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                                <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
-                                <p className="text-gray-700 mb-6 leading-relaxed">"{t.t}"</p>
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full ${t.c} flex items-center justify-center text-white font-bold`}>{t.n[0]}</div>
-                                    <div><div className="font-semibold text-gray-900">{t.n}</div><div className="text-sm text-gray-500">{t.r}</div></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-                <div className="max-w-7xl mx-auto text-center">
-                    <h2 className="text-4xl font-bold text-gray-900 mb-4">Tarifs simples et transparents</h2>
-                    <p className="text-xl text-gray-600 mb-12">Choisissez le plan adapté à vos besoins</p>
+                    
                     {pricingList.length === 0 ? (
-                        <p className="text-gray-400">Chargement des tarifs...</p>
+                        <div className="text-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p className="text-gray-600">Chargement des tarifs...</p>
+                        </div>
                     ) : (
-                        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                            {pricingList.map((plan) => (
-                                <div key={plan.$id} className={`bg-white rounded-2xl p-8 ${plan.popular ? 'border-2 border-blue-600 shadow-lg relative' : 'border border-gray-200 hover:border-gray-300'} transition-colors`}>
-                                    {plan.popular && <div className="absolute -top-4 left-1/2 transform -translate-x-1/2"><span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">Populaire</span></div>}
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                                    <p className="text-gray-600 mb-6">{plan.description}</p>
-                                    <div className="mb-6"><span className="text-5xl font-bold text-gray-900">{plan.price}€</span></div>
-                                    <ul className="space-y-3 mb-8 text-left">
-                                        {plan.features.map((f, i) => (
-                                            <li key={i} className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> {f}</li>
-                                        ))}
-                                    </ul>
-                                    {plan.price === 0 ? (
-                                        <Link to="/auth" className="block w-full py-3 px-6 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200">Commencer gratuitement</Link>
-                                    ) : (
-                                        <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className={`block w-full py-3 px-6 ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'} rounded-xl font-semibold`}>Choisir {plan.name}</a>
-                                    )}
-                                </div>
-                            ))}
+                        <div className="grid md:grid-cols-3 gap-8">
+                            {pricingList.map((plan) => {
+                                // ✅ LOGIQUE DE LIEN COMEUP : Premium a son lien dédié, les autres utilisent le lien service
+                                let comeUpLink = "https://comeup.com/fr/service/188817/identifier-ce-qui-bloque-vos-candidatures-et-ameliorer-votre-cv";
+                                if (plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('illimité')) {
+                                    comeUpLink = "https://comeup.com/fr/pay/66yL3DtJMqBQ";
+                                }
+
+                                return (
+                                    <div key={plan.$id} className={`relative bg-white rounded-2xl p-8 border ${plan.popular ? 'border-blue-500 shadow-xl shadow-blue-500/10' : 'border-gray-200'} flex flex-col`}>
+                                        {plan.popular && (
+                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-sm font-semibold rounded-full">
+                                                Le plus populaire
+                                            </div>
+                                        )}
+                                        <div className="mb-6">
+                                            <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                                            <p className="text-gray-600">{plan.description}</p>
+                                        </div>
+                                        <div className="mb-6">
+                                            <span className="text-4xl font-bold text-gray-900">{plan.price}€</span>
+                                            <span className="text-gray-500"> / analyse</span>
+                                        </div>
+                                        <ul className="space-y-3 mb-8 flex-1">
+                                            {plan.features.map((feature, i) => (
+                                                <li key={i} className="flex items-start gap-3 text-gray-700">
+                                                    <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                    <span>{feature}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <a 
+                                            href={comeUpLink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                                        >
+                                            Choisir ce plan
+                                        </a>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
             </section>
 
-            <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+            {/* FAQ Section */}
+            <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Questions fréquentes</h2>
-                        <p className="text-xl text-gray-600">Tout ce que vous devez savoir sur JobDiagnose</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Questions fréquentes</h2>
+                        <p className="text-xl text-gray-600">Tout ce que vous devez savoir sur JobDiagnose.</p>
                     </div>
                     <div className="space-y-4">
                         {[
-                            { q: "Comment fonctionne l'analyse IA ?", a: "Notre IA utilise les derniers modèles de langage pour analyser votre CV selon 50+ critères professionnels." },
-                            { q: "Mes données sont-elles en sécurité ?", a: "Absolument. Vos CV sont cryptés et stockés de manière sécurisée. Nous ne partageons jamais vos données." },
-                            { q: "Puis-je utiliser JobDiagnose pour plusieurs CV ?", a: "Oui ! Le plan Découverte offre 3 analyses, Essentiel 10 analyses, et Premium 30 analyses + rédaction par expert." },
-                            { q: "Le rapport PDF est-il professionnel ?", a: "Oui, le rapport PDF de 3 pages inclut un score visuel, des points forts, des axes d'amélioration et un plan d'action priorisé." },
-                            { q: "Que comprend la rédaction CV par expert ?", a: "Avec le plan Premium à 49,99€, un expert en recrutement relit et réécrit votre CV pour maximiser vos chances d'embauche." }
-                        ].map((faq, i) => (
-                            <div key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                <button onClick={() => toggleFaq(i)} className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer">
-                                    <span className="font-semibold text-gray-900">{faq.q}</span>
-                                    <span className={`text-gray-400 transform transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>▼</span>
-                                </button>
-                                {openFaq === i && <div className="px-6 pb-4 text-gray-600 leading-relaxed">{faq.a}</div>}
+                            { q: "Mes données sont-elles en sécurité ?", a: "Absolument. Votre CV est analysé de manière sécurisée et n'est pas utilisé pour entraîner des modèles d'IA publics. Vous pouvez supprimer vos données à tout moment." },
+                            { q: "Comment fonctionne le code d'activation ?", a: "Après vos 3 analyses gratuites, vous pouvez acheter un code d'activation sur notre page ComeUp. Il vous suffit de le saisir dans votre espace pour débloquer des analyses supplémentaires." },
+                            { q: "L'analyse est-elle vraiment objective ?", a: "Notre IA est entraînée sur des milliers de CV et d'offres d'emploi. Elle évalue votre CV selon les mêmes critères qu'un recruteur professionnel (mots-clés, structure, impact)." }
+                        ].map((item, i) => (
+                            <div key={i} className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.q}</h3>
+                                <p className="text-gray-600">{item.a}</p>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-600">
+            {/* Contact Section */}
+            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-4xl font-bold text-white mb-6">Prêt à transformer votre CV ?</h2>
-                    <p className="text-xl text-blue-100 mb-10">Rejoignez plus de 2 500 candidats qui ont décroché leur emploi grâce à JobDiagnose</p>
-                    <Link to="/auth" className="inline-block px-8 py-4 bg-white text-blue-600 rounded-xl font-bold text-lg hover:bg-blue-50 transition-colors shadow-lg">Commencer gratuitement maintenant →</Link>
-                    <p className="text-blue-200 text-sm mt-4">✓ 3 analyses gratuites ✓ Sans carte bancaire ✓ Résultats en 30 secondes</p>
+                    <h2 className="text-3xl sm:text-4xl font-bold mb-6">Prêt à décrocher votre prochain entretien ?</h2>
+                    <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
+                        Ne laissez plus un CV mal optimisé vous fermer des portes. Obtenez votre diagnostic professionnel dès maintenant.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a 
+                            href="https://comeup.com/fr/service/188817/identifier-ce-qui-bloque-vos-candidatures-et-ameliorer-votre-cv" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-block px-8 py-4 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors shadow-lg text-lg"
+                        >
+                            Commander sur ComeUp →
+                        </a>
+                        <Link to="/auth" className="inline-block px-8 py-4 bg-blue-500/30 text-white border border-blue-400/50 rounded-xl font-semibold hover:bg-blue-500/50 transition-colors text-lg">
+                            Essayer gratuitement
+                        </Link>
+                    </div>
                 </div>
             </section>
 
+            {/* Footer */}
             <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
-                    <div className="grid md:grid-cols-4 gap-8 mb-8">
-                        <div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">JD</span></div>
-                                <span className="text-xl font-bold text-white">JobDiagnose</span>
-                            </div>
-                            <p className="text-sm leading-relaxed">L'outil IA qui transforme votre CV en machine à entretiens.</p>
+                <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8">
+                    <div className="col-span-2">
+                        <div className="flex items-center gap-2 mb-4">
+                            <img src="/logo.png" alt="JobDiagnose" className="h-8 w-auto brightness-0 invert" />
+                            <span className="text-xl font-bold text-white">JobDiagnose</span>
                         </div>
-                        <div>
-                            <h4 className="text-white font-semibold mb-4">Produit</h4>
-                            <ul className="space-y-2 text-sm">
-                                <li><button onClick={() => scrollToSection('features')} className="hover:text-white transition-colors cursor-pointer">Fonctionnalités</button></li>
-                                <li><button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors cursor-pointer">Tarifs</button></li>
-                                <li><button onClick={() => scrollToSection('faq')} className="hover:text-white transition-colors cursor-pointer">FAQ</button></li>
-                            </ul>
-                        </div>
-                       <div>
-    <h4 className="text-white font-semibold mb-4">Légal</h4>
-    <ul className="space-y-2 text-sm">
-        <li><Link to="/legal" className="hover:text-white transition-colors">Mentions légales & CGU</Link></li>
-        <li><Link to="/legal" className="hover:text-white transition-colors">Politique de confidentialité</Link></li>
-    </ul>
-</div>
-                        <div>
-                            <h4 className="text-white font-semibold mb-4">Contact</h4>
-                            <ul className="space-y-2 text-sm">
-                                <li><a href="https://comeup.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">ComeUp</a></li>
-                                <li><a href="mailto:contact@jobdiagnose.com" className="hover:text-white transition-colors">Email</a></li>
-                            </ul>
-                        </div>
+                        <p className="text-sm leading-relaxed max-w-xs">
+                            L'outil d'analyse de CV par intelligence artificielle pour les candidats qui veulent se démarquer.
+                        </p>
                     </div>
-                    <div className="border-t border-gray-800 pt-8 text-center"><p className="text-sm">© {new Date().getFullYear()} JobDiagnose. Tous droits réservés.</p></div>
+                    <div>
+                        <h4 className="text-white font-semibold mb-4">Navigation</h4>
+                        <ul className="space-y-2 text-sm">
+                            <li><button onClick={() => scrollToSection('features')} className="hover:text-white transition-colors">Fonctionnalités</button></li>
+                            <li><button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors">Tarifs</button></li>
+                            <li><button onClick={() => scrollToSection('faq')} className="hover:text-white transition-colors">FAQ</button></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="text-white font-semibold mb-4">Légal</h4>
+                        <ul className="space-y-2 text-sm">
+                            <li><Link to="/legal" className="hover:text-white transition-colors">Mentions légales & CGU</Link></li>
+                            <li><Link to="/legal" className="hover:text-white transition-colors">Politique de confidentialité</Link></li>
+                        </ul>
+                    </div>
+                </div>
+                <div className="max-w-6xl mx-auto mt-12 pt-8 border-t border-gray-800 text-center text-sm">
+                    <p>© {new Date().getFullYear()} COMREDACTION. Tous droits réservés.</p>
                 </div>
             </footer>
         </div>
