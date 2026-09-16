@@ -1,80 +1,106 @@
-   import { useState } from 'react';
-   import { databases, ID, DB_ID, COLLECTIONS } from './appwrite';
-   import { Permission, Role } from 'appwrite'; // <-- AJOUTEZ CETTE LIGNE
+import { useState, useEffect } from 'react';
+import { databases, ID, DB_ID, COLLECTIONS } from './appwrite';
+import { Query } from 'appwrite';
 
 export default function Admin() {
+    const [isAuth, setIsAuth] = useState(false);
     const [password, setPassword] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [codeType, setCodeType] = useState('essentiel');
-    const [codeCount, setCodeCount] = useState(1);
-    const [newCodes, setNewCodes] = useState([]);
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState('codes');
+
+    const [codes, setCodes] = useState([]);
+    const [newCode, setNewCode] = useState({ code: '', plan: 'essentiel' });
+
+    const [pricingList, setPricingList] = useState([]);
+    const [editingPricing, setEditingPricing] = useState(null);
 
     const handleLogin = (e) => {
         e.preventDefault();
-        if (password === 'JobDiagnose2026!') {
-            setIsAuthenticated(true);
+        if (password === 'JobDiagnose2024!') {
+            setIsAuth(true);
             setError('');
         } else {
-            setError('Mot de passe incorrect');
+            setError('Mot de passe incorrect.');
         }
+    };
+
+    useEffect(() => {
+        if (isAuth) {
+            loadCodes();
+            loadPricing();
+        }
+    }, [isAuth]);
+
+    const loadCodes = async () => {
+        try {
+            const res = await databases.listDocuments(DB_ID, COLLECTIONS.CODES, [Query.orderDesc('$createdAt')]);
+            setCodes(res.documents);
+        } catch (e) { console.error(e); }
+    };
+
+    const loadPricing = async () => {
+        try {
+            const res = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING, [Query.orderAsc('order')]);
+            setPricingList(res.documents);
+        } catch (e) { console.error(e); }
     };
 
     const generateCode = () => {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let result = '';
-        for (let i = 0; i < 4; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
+        const prefix = newCode.plan === 'premium' ? 'PREM' : 'ESS';
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        setNewCode({ ...newCode, code: `JD-${prefix}-${random}` });
     };
 
-       const handleGenerateCodes = async () => {
-        const prefix = codeType === 'essentiel' ? 'JD-ESS' : 'JD-PREM';
-        const generated = [];
-        setError('');
-
+    const handleCreateCode = async () => {
+        if (!newCode.code) return;
         try {
-            for (let i = 0; i < codeCount; i++) {
-                const code = `${prefix}-${generateCode()}`;
-                
-                // Sauvegarde directe dans Appwrite (SANS createdAt)
-                  // Sauvegarde directe dans Appwrite avec permissions ouvertes
-   await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
-       code: code,
-       type: codeType,
-       used: false
-   }, [
-       Permission.read(Role.any()),
-       Permission.update(Role.any()) // Permet à l'utilisateur de le marquer comme utilisé
-   ]);
-                
-                generated.push({ code, type: codeType, used: false });
-            }
-            setNewCodes(generated);
-            alert(`✅ ${codeCount} codes générés et sauvegardés dans le Cloud !`);
-        } catch (err) {
-            setError('Erreur lors de la génération : ' + err.message);
-        }
+            await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
+                code: newCode.code,
+                plan: newCode.plan,
+                used: false,
+                usedBy: '',
+                usedAt: ''
+            });
+            setNewCode({ code: '', plan: 'essentiel' });
+            loadCodes();
+            alert('Code créé !');
+        } catch (e) { alert('Erreur: ' + e.message); }
     };
 
-    if (!isAuthenticated) {
+    const handleDeleteCode = async (id) => {
+        if (!confirm('Supprimer ce code ?')) return;
+        try {
+            await databases.deleteDocument(DB_ID, COLLECTIONS.CODES, id);
+            loadCodes();
+        } catch (e) { alert('Erreur: ' + e.message); }
+    };
+
+    const handleUpdatePricing = async (plan) => {
+        try {
+            await databases.updateDocument(DB_ID, COLLECTIONS.PRICING, plan.$id, {
+                name: plan.name,
+                price: plan.price,
+                analyses: plan.analyses,
+                description: plan.description,
+                features: plan.features,
+                popular: plan.popular,
+                order: plan.order
+            });
+            setEditingPricing(null);
+            loadPricing();
+            alert('Tarif mis à jour !');
+        } catch (e) { alert('Erreur: ' + e.message); }
+    };
+
+    if (!isAuth) {
         return (
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-                <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-                    <h2 className="text-2xl font-bold mb-6 text-center">Administration JobDiagnose</h2>
-                    {error && <p className="text-red-600 mb-4 text-center">{error}</p>}
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+                <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+                    <h2 className="text-2xl font-bold text-center mb-6">Admin JobDiagnose</h2>
+                    {error && <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg mb-4">{error}</div>}
                     <form onSubmit={handleLogin} className="space-y-4">
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Mot de passe administrateur"
-                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                        <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition">
-                            Se connecter
-                        </button>
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe admin" className="w-full px-4 py-3 border rounded-xl" />
+                        <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">Se connecter</button>
                     </form>
                 </div>
             </div>
@@ -82,65 +108,116 @@ export default function Admin() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-gray-100 py-8 px-4">
+            <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Panneau d'Administration</h1>
-                    <button onClick={() => setIsAuthenticated(false)} className="text-red-600 hover:underline">
-                        Déconnexion
-                    </button>
+                    <h1 className="text-3xl font-bold text-gray-900">Admin JobDiagnose</h1>
+                    <button onClick={() => setIsAuth(false)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Déconnexion</button>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-md mb-8">
-                    <h2 className="text-xl font-semibold mb-4">Générer des codes d'activation</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Type de plan</label>
-                            <select 
-                                value={codeType} 
-                                onChange={(e) => setCodeType(e.target.value)}
-                                className="w-full p-2 border rounded-lg"
-                            >
-                                <option value="essentiel">Essentiel (JD-ESS)</option>
-                                <option value="premium">Premium (JD-PREM)</option>
+                <div className="flex gap-2 mb-8 flex-wrap">
+                    {[{id:'codes',label:'Codes'},{id:'pricing',label:'Tarifs'}].map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-6 py-3 rounded-xl font-semibold transition-colors ${activeTab === tab.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-200'}`}>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {activeTab === 'codes' && (
+                    <div className="bg-white rounded-2xl shadow-xl p-8">
+                        <h2 className="text-2xl font-bold mb-6">Gestion des Codes d'Activation</h2>
+                        <div className="flex gap-2 mb-6 flex-wrap">
+                            <input type="text" value={newCode.code} onChange={(e) => setNewCode({...newCode, code: e.target.value})} placeholder="Code (ex: JD-ESS-ABCD)" className="flex-1 min-w-48 px-4 py-2 border rounded-lg font-mono uppercase" />
+                            <select value={newCode.plan} onChange={(e) => setNewCode({...newCode, plan: e.target.value})} className="px-4 py-2 border rounded-lg">
+                                <option value="essentiel">Essentiel</option>
+                                <option value="premium">Premium</option>
                             </select>
+                            <button onClick={generateCode} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Générer</button>
+                            <button onClick={handleCreateCode} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Créer</button>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de codes</label>
-                            <input 
-                                type="number" 
-                                min="1" 
-                                max="50" 
-                                value={codeCount} 
-                                onChange={(e) => setCodeCount(parseInt(e.target.value) || 1)}
-                                className="w-full p-2 border rounded-lg"
-                            />
-                        </div>
-                        <div className="flex items-end">
-                            <button 
-                                onClick={handleGenerateCodes}
-                                className="w-full bg-green-600 text-white p-2 rounded-lg font-bold hover:bg-green-700 transition"
-                            >
-                                ⚡ Générer les codes
-                            </button>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead><tr className="border-b"><th className="py-2">Code</th><th className="py-2">Plan</th><th className="py-2">Statut</th><th className="py-2">Action</th></tr></thead>
+                                <tbody>
+                                    {codes.map(c => (
+                                        <tr key={c.$id} className="border-b hover:bg-gray-50">
+                                            <td className="py-2 font-mono">{c.code}</td>
+                                            <td className="py-2">{c.plan}</td>
+                                            <td className="py-2">{c.used ? <span className="text-red-600">Utilisé</span> : <span className="text-green-600">Disponible</span>}</td>
+                                            <td className="py-2"><button onClick={() => handleDeleteCode(c.$id)} className="text-red-600 hover:underline">Supprimer</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    {error && <p className="text-red-600 mb-4">{error}</p>}
-                    
-                    {newCodes.length > 0 && (
-                        <div className="mt-6">
-                            <h3 className="font-semibold mb-2">Codes générés (Copiez-les maintenant) :</h3>
-                            <div className="bg-gray-100 p-4 rounded-lg max-h-60 overflow-y-auto">
-                                {newCodes.map((item, index) => (
-                                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
-                                        <span className="font-mono text-lg font-bold text-blue-700">{item.code}</span>
-                                        <span className="text-sm text-gray-500 uppercase">{item.type}</span>
-                                    </div>
-                                ))}
-                            </div>
+                )}
+
+                {activeTab === 'pricing' && (
+                    <div className="bg-white rounded-2xl shadow-xl p-8">
+                        <h2 className="text-2xl font-bold mb-6">Gestion des Tarifs</h2>
+                        <p className="text-gray-500 mb-6">Modifiez les prix, le nombre d'analyses et les fonctionnalités. Les changements sont visibles instantanément sur la landing page.</p>
+                        <div className="space-y-6">
+                            {pricingList.map((plan) => (
+                                <div key={plan.$id} className="border border-gray-200 rounded-xl p-6">
+                                    {editingPricing && editingPricing.$id === plan.$id ? (
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-semibold mb-1">Nom du plan</label>
+                                                    <input type="text" value={editingPricing.name} onChange={(e) => setEditingPricing({...editingPricing, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold mb-1">Prix (€)</label>
+                                                    <input type="number" step="0.01" value={editingPricing.price} onChange={(e) => setEditingPricing({...editingPricing, price: parseFloat(e.target.value)})} className="w-full px-3 py-2 border rounded-lg" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold mb-1">Nombre d'analyses</label>
+                                                    <input type="number" value={editingPricing.analyses} onChange={(e) => setEditingPricing({...editingPricing, analyses: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-lg" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold mb-1">Ordre d'affichage</label>
+                                                    <input type="number" value={editingPricing.order} onChange={(e) => setEditingPricing({...editingPricing, order: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-lg" />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="block text-sm font-semibold mb-1">Description</label>
+                                                    <input type="text" value={editingPricing.description} onChange={(e) => setEditingPricing({...editingPricing, description: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="block text-sm font-semibold mb-1">Fonctionnalités (une par ligne)</label>
+                                                    <textarea value={editingPricing.features.join('\n')} onChange={(e) => setEditingPricing({...editingPricing, features: e.target.value.split('\n').filter(f => f.trim())})} className="w-full px-3 py-2 border rounded-lg h-32" />
+                                                </div>
+                                                <label className="flex items-center gap-2 col-span-2">
+                                                    <input type="checkbox" checked={editingPricing.popular} onChange={(e) => setEditingPricing({...editingPricing, popular: e.target.checked})} />
+                                                    <span className="font-semibold">Marquer comme "Populaire"</span>
+                                                </label>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleUpdatePricing(editingPricing)} className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">Sauvegarder</button>
+                                                <button onClick={() => setEditingPricing(null)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400">Annuler</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="text-xl font-bold">{plan.name} {plan.popular && <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Populaire</span>}</h3>
+                                                <p className="text-gray-600">{plan.description}</p>
+                                                <p className="text-sm text-gray-500 mt-1">{plan.analyses} analyses | Ordre: {plan.order}</p>
+                                                <ul className="mt-2 text-sm text-gray-600">
+                                                    {plan.features.map((f, i) => <li key={i}>✓ {f}</li>)}
+                                                </ul>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-3xl font-bold text-blue-600">{plan.price}€</div>
+                                                <button onClick={() => setEditingPricing({...plan})} className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Modifier</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

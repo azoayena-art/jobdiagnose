@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { databases, DB_ID, COLLECTIONS } from './appwrite';
+import { Query } from 'appwrite';
 
 export default function Landing() {
     const [openFaq, setOpenFaq] = useState(null);
+    const [pricingList, setPricingList] = useState([]);
     const toggleFaq = (index) => setOpenFaq(openFaq === index ? null : index);
 
     const scrollToSection = (id) => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-        }
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
     };
+
+    useEffect(() => {
+        const loadPricing = async () => {
+            try {
+                const res = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING, [Query.orderAsc('order')]);
+                setPricingList(res.documents);
+            } catch (e) { console.error('Erreur pricing:', e); }
+        };
+        loadPricing();
+    }, []);
 
     const features = [
         { bg: "bg-blue-100", text: "text-blue-600", title: "Analyse IA précise", desc: "Notre IA évalue votre CV selon 50+ critères utilisés par les recruteurs professionnels." },
@@ -18,19 +29,16 @@ export default function Landing() {
         { bg: "bg-purple-100", text: "text-purple-600", title: "Matching offre", desc: "Collez l'offre qui vous intéresse et découvrez à quel point votre CV correspond." },
         { bg: "bg-orange-100", text: "text-orange-600", title: "100% confidentiel", desc: "Vos données sont cryptées et jamais partagées. Confidentialité totale garantie." },
         { bg: "bg-red-100", text: "text-red-600", title: "Résultats en 30s", desc: "Pas besoin d'attendre. Uploadez votre CV et recevez votre analyse instantanément." },
-        { bg: "bg-indigo-100", text: "text-indigo-600", title: "Plans flexibles", desc: "Commencez gratuitement. Passez au Premium pour des analyses illimitées." }
+        { bg: "bg-indigo-100", text: "text-indigo-600", title: "Plans flexibles", desc: "Commencez gratuitement. Passez au Premium pour la rédaction par expert." }
     ];
 
     return (
         <div className="min-h-screen bg-white font-sans">
-            {/* NAVBAR */}
             <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">JD</span>
-                            </div>
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">JD</span></div>
                             <span className="text-xl font-bold text-gray-900">JobDiagnose</span>
                         </div>
                         <div className="hidden md:flex items-center gap-8">
@@ -46,7 +54,6 @@ export default function Landing() {
                 </div>
             </nav>
 
-            {/* HERO SECTION */}
             <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
                 <div className="max-w-7xl mx-auto text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
@@ -63,8 +70,6 @@ export default function Landing() {
                         <Link to="/auth" className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">Analyser mon CV gratuitement →</Link>
                         <button onClick={() => scrollToSection('features')} className="px-8 py-4 bg-white text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all border border-gray-200 cursor-pointer">Voir comment ça marche</button>
                     </div>
-                    
-                    {/* SOCIAL PROOF */}
                     <div className="flex flex-wrap justify-center items-center gap-8 text-gray-500 text-sm">
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-2">
@@ -74,19 +79,12 @@ export default function Landing() {
                             </div>
                             <span className="font-medium">+2 500 candidats aidés</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <span className="text-yellow-400 text-lg">★★★★★</span>
-                            <span className="font-medium">4.9/5 sur ComeUp</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-green-600 font-bold text-lg">✓</span>
-                            <span className="font-medium">100% confidentiel</span>
-                        </div>
+                        <div className="flex items-center gap-1"><span className="text-yellow-400 text-lg">★★★★★</span><span className="font-medium">4.9/5 sur ComeUp</span></div>
+                        <div className="flex items-center gap-2"><span className="text-green-600 font-bold text-lg">✓</span><span className="font-medium">100% confidentiel</span></div>
                     </div>
                 </div>
             </section>
 
-            {/* SECTION STATS */}
             <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white border-y border-gray-100">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -98,7 +96,6 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 6 FEATURES */}
             <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -109,9 +106,7 @@ export default function Landing() {
                         {features.map((f, i) => (
                             <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow border border-gray-100">
                                 <div className={`w-12 h-12 ${f.bg} rounded-xl flex items-center justify-center mb-6`}>
-                                    <svg className={`w-6 h-6 ${f.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
+                                    <svg className={`w-6 h-6 ${f.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900 mb-3">{f.title}</h3>
                                 <p className="text-gray-600 leading-relaxed">{f.desc}</p>
@@ -121,7 +116,6 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* HOW IT WORKS */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -129,26 +123,17 @@ export default function Landing() {
                         <p className="text-xl text-gray-600">3 étapes simples pour transformer votre CV</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">1</div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">Uploadez votre CV</h3>
-                            <p className="text-gray-600">Glissez-déposez votre CV au format PDF. Notre IA extrait automatiquement le texte.</p>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">2</div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">Recevez l'analyse IA</h3>
-                            <p className="text-gray-600">En 30 secondes, obtenez un score sur 100, vos points forts et un conseil personnalisé.</p>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">3</div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">Téléchargez le rapport</h3>
-                            <p className="text-gray-600">Recevez un rapport PDF professionnel de 3 pages avec plan d'action détaillé.</p>
-                        </div>
+                        {[{n:"1",t:"Uploadez votre CV",d:"Glissez-déposez votre CV au format PDF. Notre IA extrait automatiquement le texte."},{n:"2",t:"Recevez l'analyse IA",d:"En 30 secondes, obtenez un score sur 100, vos points forts et un conseil personnalisé."},{n:"3",t:"Téléchargez le rapport",d:"Recevez un rapport PDF professionnel de 3 pages avec plan d'action détaillé."}].map((s,i) => (
+                            <div key={i} className="text-center">
+                                <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">{s.n}</div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-3">{s.t}</h3>
+                                <p className="text-gray-600">{s.d}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* TÉMOIGNAGES */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -156,85 +141,51 @@ export default function Landing() {
                         <p className="text-xl text-gray-600">Rejoignez plus de 2 500 candidats qui ont transformé leur recherche</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
-                            <p className="text-gray-700 mb-6 leading-relaxed">"J'ai augmenté mon taux de réponse de 80% après avoir suivi les conseils de JobDiagnose."</p>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">M</div>
-                                <div><div className="font-semibold text-gray-900">Marie L.</div><div className="text-sm text-gray-500">Consultante Marketing</div></div>
+                        {[{n:"Marie L.",r:"Consultante Marketing",t:"J'ai augmenté mon taux de réponse de 80% après avoir suivi les conseils de JobDiagnose.",c:"bg-blue-500"},{n:"Thomas D.",r:"Développeur Full-Stack",t:"Le rapport PDF est ultra professionnel. J'ai décroché 3 entretiens la semaine suivante.",c:"bg-green-500"},{n:"Sophie M.",r:"Chef de Projet",t:"La fonctionnalité de matching avec l'offre d'emploi est géniale. J'adapte mon CV pour chaque candidature.",c:"bg-purple-500"}].map((t,i) => (
+                            <div key={i} className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                                <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
+                                <p className="text-gray-700 mb-6 leading-relaxed">"{t.t}"</p>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full ${t.c} flex items-center justify-center text-white font-bold`}>{t.n[0]}</div>
+                                    <div><div className="font-semibold text-gray-900">{t.n}</div><div className="text-sm text-gray-500">{t.r}</div></div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
-                            <p className="text-gray-700 mb-6 leading-relaxed">"Le rapport PDF est ultra professionnel. J'ai décroché 3 entretiens la semaine suivante."</p>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">T</div>
-                                <div><div className="font-semibold text-gray-900">Thomas D.</div><div className="text-sm text-gray-500">Développeur Full-Stack</div></div>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
-                            <p className="text-gray-700 mb-6 leading-relaxed">"La fonctionnalité de matching avec l'offre d'emploi est géniale. J'adapte mon CV pour chaque candidature."</p>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">S</div>
-                                <div><div className="font-semibold text-gray-900">Sophie M.</div><div className="text-sm text-gray-500">Chef de Projet</div></div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* PRICING - NOUVEAUX TARIFS */}
             <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-7xl mx-auto text-center">
                     <h2 className="text-4xl font-bold text-gray-900 mb-4">Tarifs simples et transparents</h2>
                     <p className="text-xl text-gray-600 mb-12">Choisissez le plan adapté à vos besoins</p>
-                    <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                        {/* Plan Gratuit */}
-                        <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-colors">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Découverte</h3>
-                            <p className="text-gray-600 mb-6">Pour tester le service</p>
-                            <div className="mb-6"><span className="text-5xl font-bold text-gray-900">0€</span></div>
-                            <ul className="space-y-3 mb-8 text-left">
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> 3 analyses de CV</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Rapport PDF basique</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Score et conseils IA</li>
-                            </ul>
-                            <Link to="/auth" className="block w-full py-3 px-6 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200">Commencer gratuitement</Link>
+                    {pricingList.length === 0 ? (
+                        <p className="text-gray-400">Chargement des tarifs...</p>
+                    ) : (
+                        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                            {pricingList.map((plan) => (
+                                <div key={plan.$id} className={`bg-white rounded-2xl p-8 ${plan.popular ? 'border-2 border-blue-600 shadow-lg relative' : 'border border-gray-200 hover:border-gray-300'} transition-colors`}>
+                                    {plan.popular && <div className="absolute -top-4 left-1/2 transform -translate-x-1/2"><span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">Populaire</span></div>}
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                                    <p className="text-gray-600 mb-6">{plan.description}</p>
+                                    <div className="mb-6"><span className="text-5xl font-bold text-gray-900">{plan.price}€</span></div>
+                                    <ul className="space-y-3 mb-8 text-left">
+                                        {plan.features.map((f, i) => (
+                                            <li key={i} className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> {f}</li>
+                                        ))}
+                                    </ul>
+                                    {plan.price === 0 ? (
+                                        <Link to="/auth" className="block w-full py-3 px-6 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200">Commencer gratuitement</Link>
+                                    ) : (
+                                        <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className={`block w-full py-3 px-6 ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'} rounded-xl font-semibold`}>Choisir {plan.name}</a>
+                                    )}
+                                </div>
+                            ))}
                         </div>
-                        {/* Plan Essentiel */}
-                        <div className="bg-white rounded-2xl p-8 border-2 border-blue-600 shadow-lg relative">
-                            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2"><span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">Populaire</span></div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Essentiel</h3>
-                            <p className="text-gray-600 mb-6">Pour les chercheurs d'emploi actifs</p>
-                            <div className="mb-6"><span className="text-5xl font-bold text-gray-900">5,99€</span></div>
-                            <ul className="space-y-3 mb-8 text-left">
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> 10 analyses de CV</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Rapport PDF professionnel 3 pages</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Matching offre d'emploi</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Support email</li>
-                            </ul>
-                            <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-6 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">Choisir Essentiel</a>
-                        </div>
-                        {/* Plan Premium */}
-                        <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 transition-colors">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Premium</h3>
-                            <p className="text-gray-600 mb-6">Pour les professionnels exigeants</p>
-                            <div className="mb-6"><span className="text-5xl font-bold text-gray-900">49,99€</span></div>
-                            <ul className="space-y-3 mb-8 text-left">
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> 30 analyses de CV</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Rapport PDF avancé</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Matching offre illimité</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Rédaction CV par expert humain</li>
-                                <li className="flex items-center gap-2 text-gray-700"><span className="text-green-600 font-bold">✓</span> Support prioritaire 24/7</li>
-                            </ul>
-                            <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-6 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200">Choisir Premium</a>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </section>
 
-            {/* FAQ */}
             <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center mb-16">
@@ -243,25 +194,24 @@ export default function Landing() {
                     </div>
                     <div className="space-y-4">
                         {[
-                            { q: "Comment fonctionne l'analyse IA ?", a: "Notre IA utilise les derniers modèles de langage pour analyser votre CV selon 50+ critères professionnels. Elle évalue la structure, le contenu et les mots-clés." },
+                            { q: "Comment fonctionne l'analyse IA ?", a: "Notre IA utilise les derniers modèles de langage pour analyser votre CV selon 50+ critères professionnels." },
                             { q: "Mes données sont-elles en sécurité ?", a: "Absolument. Vos CV sont cryptés et stockés de manière sécurisée. Nous ne partageons jamais vos données." },
-                            { q: "Puis-je utiliser JobDiagnose pour plusieurs CV ?", a: "Oui ! Avec le plan Découverte, vous avez droit à 3 analyses. Avec le plan Essentiel, 10 analyses. Avec le plan Premium, 30 analyses + rédaction par expert." },
-                            { q: "Le rapport PDF est-il professionnel ?", a: "Oui, le rapport PDF de 3 pages est conçu pour être clair et actionnable, avec un score visuel et un plan d'action priorisé." },
-                            { q: "Que comprend la rédaction CV par expert ?", a: "Avec le plan Premium à 49,99€, un expert en recrutement relit et réécrit votre CV professionnellement pour maximiser vos chances d'embauche." }
-                        ].map((faq, index) => (
-                            <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                <button onClick={() => toggleFaq(index)} className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer">
+                            { q: "Puis-je utiliser JobDiagnose pour plusieurs CV ?", a: "Oui ! Le plan Découverte offre 3 analyses, Essentiel 10 analyses, et Premium 30 analyses + rédaction par expert." },
+                            { q: "Le rapport PDF est-il professionnel ?", a: "Oui, le rapport PDF de 3 pages inclut un score visuel, des points forts, des axes d'amélioration et un plan d'action priorisé." },
+                            { q: "Que comprend la rédaction CV par expert ?", a: "Avec le plan Premium à 49,99€, un expert en recrutement relit et réécrit votre CV pour maximiser vos chances d'embauche." }
+                        ].map((faq, i) => (
+                            <div key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                <button onClick={() => toggleFaq(i)} className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer">
                                     <span className="font-semibold text-gray-900">{faq.q}</span>
-                                    <span className={`text-gray-400 transform transition-transform ${openFaq === index ? 'rotate-180' : ''}`}>▼</span>
+                                    <span className={`text-gray-400 transform transition-transform ${openFaq === i ? 'rotate-180' : ''}`}>▼</span>
                                 </button>
-                                {openFaq === index && <div className="px-6 pb-4 text-gray-600 leading-relaxed">{faq.a}</div>}
+                                {openFaq === i && <div className="px-6 pb-4 text-gray-600 leading-relaxed">{faq.a}</div>}
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* CTA FINAL */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-600">
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="text-4xl font-bold text-white mb-6">Prêt à transformer votre CV ?</h2>
@@ -271,18 +221,15 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* FOOTER */}
             <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid md:grid-cols-4 gap-8 mb-8">
                         <div>
                             <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-white font-bold text-sm">JD</span>
-                                </div>
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">JD</span></div>
                                 <span className="text-xl font-bold text-white">JobDiagnose</span>
                             </div>
-                            <p className="text-sm leading-relaxed">L'outil IA qui transforme votre CV en machine à entretiens. Analyse professionnelle en 30 secondes.</p>
+                            <p className="text-sm leading-relaxed">L'outil IA qui transforme votre CV en machine à entretiens.</p>
                         </div>
                         <div>
                             <h4 className="text-white font-semibold mb-4">Produit</h4>
@@ -297,7 +244,6 @@ export default function Landing() {
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="hover:text-white transition-colors">CGU</a></li>
                                 <li><a href="#" className="hover:text-white transition-colors">Confidentialité</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Cookies</a></li>
                             </ul>
                         </div>
                         <div>
@@ -308,10 +254,7 @@ export default function Landing() {
                             </ul>
                         </div>
                     </div>
-                    <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <p className="text-sm">© {new Date().getFullYear()} JobDiagnose. Tous droits réservés.</p>
-                        <div className="flex items-center gap-4 text-sm"><span>Fait avec ❤️ en France</span></div>
-                    </div>
+                    <div className="border-t border-gray-800 pt-8 text-center"><p className="text-sm">© {new Date().getFullYear()} JobDiagnose. Tous droits réservés.</p></div>
                 </div>
             </footer>
         </div>
