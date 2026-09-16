@@ -5,10 +5,19 @@ export default function Landing() {
     const [openFaq, setOpenFaq] = useState(null);
     const toggleFaq = (index) => setOpenFaq(openFaq === index ? null : index);
 
+    const features = [
+        { bg: "bg-blue-100", text: "text-blue-600", title: "Analyse IA précise", desc: "Notre IA évalue votre CV selon 50+ critères utilisés par les recruteurs professionnels." },
+        { bg: "bg-green-100", text: "text-green-600", title: "Rapport PDF pro", desc: "Recevez un rapport de 3 pages avec score visuel, points forts et plan d'action." },
+        { bg: "bg-purple-100", text: "text-purple-600", title: "Matching offre", desc: "Collez l'offre qui vous intéresse et découvrez à quel point votre CV correspond." },
+        { bg: "bg-orange-100", text: "text-orange-600", title: "100% confidentiel", desc: "Vos données sont cryptées et jamais partagées. Confidentialité totale garantie." },
+        { bg: "bg-red-100", text: "text-red-600", title: "Résultats en 30s", desc: "Pas besoin d'attendre. Uploadez votre CV et recevez votre analyse instantanément." },
+        { bg: "bg-indigo-100", text: "text-indigo-600", title: "Plans flexibles", desc: "Commencez gratuitement. Passez au Premium pour des analyses illimitées." }
+    ];
+
     return (
         <div className="min-h-screen bg-white font-sans">
-            {/* 1. NAVBAR FIXE AVEC NAVIGATION FLUIDE */}
-            <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
+            {/* 1. NAVBAR */}
+            <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-2">
@@ -30,7 +39,7 @@ export default function Landing() {
                 </div>
             </nav>
 
-            {/* 2. HERO SECTION AVEC GRADIENT, BADGE ANIMÉ ET DOUBLE CTA */}
+            {/* 2. HERO SECTION */}
             <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
                 <div className="max-w-7xl mx-auto text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-6">
@@ -48,7 +57,7 @@ export default function Landing() {
                         <a href="#features" className="px-8 py-4 bg-white text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all border border-gray-200">Voir comment ça marche</a>
                     </div>
                     
-                    {/* 3. SOCIAL PROOF (Avatars, étoiles, statistiques) */}
+                    {/* 3. SOCIAL PROOF */}
                     <div className="flex flex-wrap justify-center items-center gap-8 text-gray-500 text-sm">
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-2">
@@ -70,7 +79,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 4. SECTION STATS (4 métriques clés) */}
+            {/* 4. SECTION STATS */}
             <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white border-y border-gray-100">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -82,7 +91,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 5. 6 FEATURES AVEC ICÔNES SVG COLORÉES */}
+            {/* 5. 6 FEATURES */}
             <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -90,17 +99,12 @@ export default function Landing() {
                         <p className="text-xl text-gray-600 max-w-3xl mx-auto">Une suite complète d'outils propulsés par l'IA pour optimiser votre CV.</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        {[
-                            { icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />, color: "blue", title: "Analyse IA précise", desc: "Notre IA évalue votre CV selon 50+ critères utilisés par les recruteurs professionnels." },
-                            { icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />, color: "green", title: "Rapport PDF pro", desc: "Recevez un rapport de 3 pages avec score visuel, points forts et plan d'action." },
-                            { icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />, color: "purple", title: "Matching offre", desc: "Collez l'offre qui vous intéresse et découvrez à quel point votre CV correspond." },
-                            { icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />, color: "orange", title: "100% confidentiel", desc: "Vos données sont cryptées et jamais partagées. Confidentialité totale garantie." },
-                            { icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />, color: "red", title: "Résultats en 30s", desc: "Pas besoin d'attendre des jours. Uploadez votre CV et recevez votre analyse instantanément." },
-                            { icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />, color: "indigo", title: "Plans flexibles", desc: "Commencez gratuitement avec 1 analyse. Passez au Premium pour des analyses illimitées." }
-                        ].map((f, i) => (
+                        {features.map((f, i) => (
                             <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow border border-gray-100">
-                                <div className={`w-12 h-12 bg-${f.color}-100 rounded-xl flex items-center justify-center mb-6`}>
-                                    <svg className={`w-6 h-6 text-${f.color}-600`} fill="none" stroke="currentColor" viewBox="0 0 24 24">{f.icon}</svg>
+                                <div className={`w-12 h-12 ${f.bg} rounded-xl flex items-center justify-center mb-6`}>
+                                    <svg className={`w-6 h-6 ${f.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900 mb-3">{f.title}</h3>
                                 <p className="text-gray-600 leading-relaxed">{f.desc}</p>
@@ -110,7 +114,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 6. HOW IT WORKS EN 3 ÉTAPES */}
+            {/* 6. HOW IT WORKS */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -118,22 +122,26 @@ export default function Landing() {
                         <p className="text-xl text-gray-600">3 étapes simples pour transformer votre CV</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        {[
-                            { num: "1", title: "Uploadez votre CV", desc: "Glissez-déposez votre CV au format PDF. Notre IA extrait automatiquement le texte." },
-                            { num: "2", title: "Recevez l'analyse IA", desc: "En 30 secondes, obtenez un score sur 100, vos points forts et un conseil personnalisé." },
-                            { num: "3", title: "Téléchargez le rapport", desc: "Recevez un rapport PDF professionnel de 3 pages avec plan d'action détaillé." }
-                        ].map((step, i) => (
-                            <div key={i} className="text-center">
-                                <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">{step.num}</div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                                <p className="text-gray-600">{step.desc}</p>
-                            </div>
-                        ))}
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">1</div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-3">Uploadez votre CV</h3>
+                            <p className="text-gray-600">Glissez-déposez votre CV au format PDF. Notre IA extrait automatiquement le texte.</p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">2</div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-3">Recevez l'analyse IA</h3>
+                            <p className="text-gray-600">En 30 secondes, obtenez un score sur 100, vos points forts et un conseil personnalisé.</p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-6">3</div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-3">Téléchargez le rapport</h3>
+                            <p className="text-gray-600">Recevez un rapport PDF professionnel de 3 pages avec plan d'action détaillé.</p>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* 7. 3 TÉMOIGNAGES AVEC NOTATION 5 ÉTOILES */}
+            {/* 7. TÉMOIGNAGES */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -141,25 +149,35 @@ export default function Landing() {
                         <p className="text-xl text-gray-600">Rejoignez plus de 2 500 candidats qui ont transformé leur recherche</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        {[
-                            { name: "Marie L.", role: "Consultante Marketing", text: "J'ai augmenté mon taux de réponse de 80% après avoir suivi les conseils de JobDiagnose. L'analyse est incroyablement précise !" },
-                            { name: "Thomas D.", role: "Développeur Full-Stack", text: "Le rapport PDF est ultra professionnel. Je l'ai utilisé pour guider ma refonte de CV et j'ai décroché 3 entretiens la semaine suivante." },
-                            { name: "Sophie M.", role: "Chef de Projet", text: "La fonctionnalité de matching avec l'offre d'emploi est géniale. J'adapte mon CV pour chaque candidature et ça paie !" }
-                        ].map((t, i) => (
-                            <div key={i} className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                                <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
-                                <p className="text-gray-700 mb-6 leading-relaxed">"{t.text}"</p>
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${i===0?'bg-blue-500':i===1?'bg-green-500':'bg-purple-500'}`}>{t.name[0]}</div>
-                                    <div><div className="font-semibold text-gray-900">{t.name}</div><div className="text-sm text-gray-500">{t.role}</div></div>
-                                </div>
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
+                            <p className="text-gray-700 mb-6 leading-relaxed">"J'ai augmenté mon taux de réponse de 80% après avoir suivi les conseils de JobDiagnose."</p>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">M</div>
+                                <div><div className="font-semibold text-gray-900">Marie L.</div><div className="text-sm text-gray-500">Consultante Marketing</div></div>
                             </div>
-                        ))}
+                        </div>
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
+                            <p className="text-gray-700 mb-6 leading-relaxed">"Le rapport PDF est ultra professionnel. J'ai décroché 3 entretiens la semaine suivante."</p>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">T</div>
+                                <div><div className="font-semibold text-gray-900">Thomas D.</div><div className="text-sm text-gray-500">Développeur Full-Stack</div></div>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+                            <div className="flex items-center gap-1 mb-4"><span className="text-yellow-400">★★★★★</span></div>
+                            <p className="text-gray-700 mb-6 leading-relaxed">"La fonctionnalité de matching avec l'offre d'emploi est géniale. J'adapte mon CV pour chaque candidature."</p>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">S</div>
+                                <div><div className="font-semibold text-gray-900">Sophie M.</div><div className="text-sm text-gray-500">Chef de Projet</div></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* 8. PRICING AVEC 3 PLANS */}
+            {/* 8. PRICING */}
             <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-7xl mx-auto text-center">
                     <h2 className="text-4xl font-bold text-gray-900 mb-4">Tarifs simples et transparents</h2>
@@ -202,7 +220,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 9. FAQ INTERACTIVE AVEC ACCORDÉON */}
+            {/* 9. FAQ */}
             <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center mb-16">
@@ -211,8 +229,8 @@ export default function Landing() {
                     </div>
                     <div className="space-y-4">
                         {[
-                            { q: "Comment fonctionne l'analyse IA ?", a: "Notre IA utilise les derniers modèles de langage pour analyser votre CV selon 50+ critères professionnels. Elle évalue la structure, le contenu et les mots-clés." },
-                            { q: "Mes données sont-elles en sécurité ?", a: "Absolument. Vos CV sont cryptés et stockés de manière sécurisée. Nous ne partageons jamais vos données avec des tiers." },
+                            { q: "Comment fonctionne l'analyse IA ?", a: "Notre IA utilise les derniers modèles de langage pour analyser votre CV selon 50+ critères professionnels." },
+                            { q: "Mes données sont-elles en sécurité ?", a: "Absolument. Vos CV sont cryptés et stockés de manière sécurisée. Nous ne partageons jamais vos données." },
                             { q: "Puis-je utiliser JobDiagnose pour plusieurs CV ?", a: "Oui ! Avec le plan Essentiel, vous avez droit à 10 analyses. Avec le plan Premium, les analyses sont illimitées." },
                             { q: "Le rapport PDF est-il professionnel ?", a: "Oui, le rapport PDF de 3 pages est conçu pour être clair et actionnable, avec un score visuel et un plan d'action priorisé." }
                         ].map((faq, index) => (
@@ -228,7 +246,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 10. CTA FINAL AVEC GRADIENT BLEU */}
+            {/* 10. CTA FINAL */}
             <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 to-indigo-600">
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="text-4xl font-bold text-white mb-6">Prêt à transformer votre CV ?</h2>
@@ -238,7 +256,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            {/* 11. FOOTER PROFESSIONNEL 4 COLONNES */}
+            {/* 11. FOOTER */}
             <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid md:grid-cols-4 gap-8 mb-8">
