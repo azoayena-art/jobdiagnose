@@ -22,7 +22,7 @@ export { ID, Query, Permission, Role };
 // IDENTIFIANTS DES RESSOURCES
 // ═══════════════════════════════════════════════════════
 export const DB_ID = 'jobdiagnose_db'; // ⚠️ REMPLACE PAR TON DATABASE ID (ex: 67b8e5a0003a6b3c7d4e)
-export const BUCKET_ID = 'cvs'; // ⚠️ REMPLACE PAR TON BUCKET ID (celui où tu stockes les CV)
+export const BUCKET_ID = 'CSV'; // ⚠️ REMPLACE PAR TON BUCKET ID (celui où tu stockes les CV)
 
 // ═══════════════════════════════════════════════════════
 // NOMS DES COLLECTIONS
