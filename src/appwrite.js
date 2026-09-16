@@ -6,7 +6,7 @@ import { Client, Account, Databases, Storage, ID, Query, Permission, Role } from
 const client = new Client();
 client
     .setEndpoint('https://cloud.appwrite.io/v1')
-    .setProject('6aa30ee1002fdf9e18de'); // ⚠️ REMPLACE PAR TON PROJECT ID (ex: 67b8e4f8000a8b9c91d3)
+    .setProject('TON_PROJECT_ID'); // ⚠️ REMPLACE PAR TON PROJECT ID
 
 // ═══════════════════════════════════════════════════════
 // EXPORTS DES SERVICES
@@ -21,15 +21,15 @@ export { ID, Query, Permission, Role };
 // ═══════════════════════════════════════════════════════
 // IDENTIFIANTS DES RESSOURCES
 // ═══════════════════════════════════════════════════════
-export const DB_ID = 'jobdiagnose_db'; // ⚠️ REMPLACE PAR TON DATABASE ID (ex: 67b8e5a0003a6b3c7d4e)
-export const BUCKET_ID = 'CVS'; // ⚠️ REMPLACE PAR TON BUCKET ID (celui où tu stockes les CV)
+export const DB_ID = 'jobdiagnose_db'; // ⚠️ REMPLACE PAR TON DATABASE ID
+export const BUCKET_ID = 'cvs'; // ⚠️ REMPLACE PAR TON BUCKET ID
 
 // ═══════════════════════════════════════════════════════
-// NOMS DES COLLECTIONS
+// NOMS DES COLLECTIONS (TOUT EN MAJUSCULES)
 // ═══════════════════════════════════════════════════════
 export const COLLECTIONS = {
     USERS: 'users',
-    CVs: 'CVS',
+    CVS: 'cvs',        // ✅ CORRIGÉ : CVS tout en majuscules
     CODES: 'codes',
-    PRICING: 'pricing' // ✅ Collection des tarifs (ajoutée pour l'admin)
+    PRICING: 'pricing'
 };
