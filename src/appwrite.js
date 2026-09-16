@@ -29,7 +29,7 @@ export const BUCKET_ID = 'CSV'; // ⚠️ REMPLACE PAR TON BUCKET ID (celui où 
 // ═══════════════════════════════════════════════════════
 export const COLLECTIONS = {
     USERS: 'users',
-    CVs: 'cvs',
+    CVs: 'CSV',
     CODES: 'codes',
     PRICING: 'pricing' // ✅ Collection des tarifs (ajoutée pour l'admin)
 };
