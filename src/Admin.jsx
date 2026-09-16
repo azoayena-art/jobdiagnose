@@ -52,25 +52,24 @@ export default function Admin() {
         setNewCode({ ...newCode, code: `JD-${prefix}-${random}` });
     };
 
-const handleCreateCode = async () => {
-    if (!newCode.code) return;
-    try {
-        await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
-            code: newCode.code,
-            plan: newCode.plan,
-            type: newCode.plan, // ✅ AJOUTÉ : envoie le type
-            used: false,
-            usedBy: '',
-            usedAt: ''
-        });
-        setNewCode({ code: '', plan: 'essentiel' });
-        loadCodes();
-        alert('✅ Code créé avec succès !');
-    } catch (e) { 
-        alert('❌ Erreur: ' + e.message); 
-        console.error('Détails:', e);
-    }
-};
+    // ✅ CORRECTION : On envoie UNIQUEMENT les attributs qui existent dans Appwrite
+    const handleCreateCode = async () => {
+        if (!newCode.code) return;
+        try {
+            await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
+                code: newCode.code,
+                used: false,
+                usedBy: '',
+                usedAt: ''
+            });
+            setNewCode({ code: '', plan: 'essentiel' });
+            loadCodes();
+            alert('✅ Code créé avec succès !');
+        } catch (e) { 
+            alert('❌ Erreur: ' + e.message); 
+            console.error(e);
+        }
+    };
 
     const handleDeleteCode = async (id) => {
         if (!confirm('Supprimer ce code ?')) return;
@@ -120,11 +119,7 @@ const handleCreateCode = async () => {
         <div className="min-h-screen bg-gray-100 py-8 px-4">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-                    <div className="flex items-center gap-3">
-    <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
-    <h1 className="text-2xl font-bold text-gray-900">Admin</h1>
-</div>
-
+                    <h1 className="text-3xl font-bold text-gray-900">Admin JobDiagnose</h1>
                     <div className="flex gap-2 flex-wrap">
                         <Link to="/" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">← Accueil</Link>
                         <button onClick={() => setIsAuth(false)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold">Déconnexion</button>
@@ -132,7 +127,7 @@ const handleCreateCode = async () => {
                 </div>
 
                 <div className="flex gap-2 mb-8 flex-wrap">
-                    {[{id:'codes',label:'🔑 Codes'},{id:'pricing',label:'💰 Tarifs'}].map(tab => (
+                    {[{id:'codes',label:' Codes'},{id:'pricing',label:' Tarifs'}].map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-6 py-3 rounded-xl font-semibold transition-colors ${activeTab === tab.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-200'}`}>
                             {tab.label}
                         </button>
@@ -158,7 +153,8 @@ const handleCreateCode = async () => {
                                     {codes.map(c => (
                                         <tr key={c.$id} className="border-b hover:bg-gray-50">
                                             <td className="py-2 font-mono">{c.code}</td>
-                                            <td className="py-2">{c.plan}</td>
+                                            {/* ✅ CORRECTION : Détecte le plan directement depuis le code */}
+                                            <td className="py-2 font-bold text-blue-600">{c.code?.includes('PREM') ? 'Premium' : 'Essentiel'}</td>
                                             <td className="py-2">{c.used ? <span className="text-red-600">Utilisé</span> : <span className="text-green-600">Disponible</span>}</td>
                                             <td className="py-2"><button onClick={() => handleDeleteCode(c.$id)} className="text-red-600 hover:underline">Supprimer</button></td>
                                         </tr>
@@ -172,7 +168,7 @@ const handleCreateCode = async () => {
                 {activeTab === 'pricing' && (
                     <div className="bg-white rounded-2xl shadow-xl p-8">
                         <h2 className="text-2xl font-bold mb-6">Gestion des Tarifs</h2>
-                        <p className="text-gray-500 mb-6">Modifiez les prix, le nombre d'analyses et les fonctionnalités. Les changements sont visibles instantanément sur la landing page.</p>
+                        <p className="text-gray-500 mb-6">Modifiez les prix, le nombre d'analyses et les fonctionnalités.</p>
                         <div className="space-y-6">
                             {pricingList.length === 0 ? (
                                 <p className="text-gray-400 text-center py-8">Chargement des tarifs...</p>
