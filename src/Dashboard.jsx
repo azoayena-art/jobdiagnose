@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { account, databases, DB_ID, COLLECTIONS } from './appwrite';
 import { Query } from 'appwrite';
@@ -11,6 +11,25 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [userPlan, setUserPlan] = useState('free');
     const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+    const [lastRefresh, setLastRefresh] = useState(new Date());
+
+    const loadAnalyses = useCallback(async (userId) => {
+        try {
+            console.log('🔄 Chargement des analyses...');
+            const res = await databases.listDocuments(DB_ID, COLLECTIONS.CVS, [
+                Query.equal('userId', userId),
+                Query.orderDesc('$createdAt'),
+                Query.limit(50)
+            ]);
+            console.log(`✅ ${res.documents.length} analyses chargées`);
+            setAnalyses(res.documents);
+            setLastRefresh(new Date());
+        } catch (e) {
+            console.error('❌ Erreur chargement analyses:', e);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -19,27 +38,29 @@ export default function Dashboard() {
                 setUser(currentUser);
                 const savedPlan = localStorage.getItem(`jobdiagnose_plan_${currentUser.$id}`);
                 if (savedPlan) setUserPlan(savedPlan);
-                loadAnalyses(currentUser.$id);
+                await loadAnalyses(currentUser.$id);
             } catch (err) {
                 navigate('/auth');
             }
         };
         checkAuth();
-    }, [navigate]);
 
-    const loadAnalyses = async (userId) => {
-        try {
-            const res = await databases.listDocuments(DB_ID, COLLECTIONS.CVs, [
-                Query.equal('userId', userId),
-                Query.orderDesc('$createdAt'),
-                Query.limit(50)
-            ]);
-            setAnalyses(res.documents);
-        } catch (e) {
-            console.error('Erreur chargement analyses:', e);
-        } finally {
-            setLoading(false);
-        }
+        // 🔄 Auto-refresh quand l'utilisateur revient sur la page
+        const handleVisibilityChange = () => {
+            if (!document.hidden && user) {
+                console.log('👁️ Page visible, rechargement...');
+                loadAnalyses(user.$id);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [navigate, loadAnalyses, user]);
+
+    const handleRefresh = async () => {
+        if (!user) return;
+        setLoading(true);
+        await loadAnalyses(user.$id);
     };
 
     const stats = {
@@ -216,13 +237,22 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4">
             <div className="max-w-6xl mx-auto">
-                {/* Header */}
+                {/* Header avec bouton rafraîchir */}
                 <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Bonjour, {user.name} 👋</h1>
                         <p className="text-gray-600">Voici un aperçu de vos analyses de CV</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Dernière mise à jour : {lastRefresh.toLocaleTimeString('fr-FR')}
+                        </p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
+                        <button 
+                            onClick={handleRefresh}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2"
+                        >
+                            🔄 Rafraîchir
+                        </button>
                         <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">+ Nouvelle analyse</Link>
                         <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">Déconnexion</button>
                     </div>
