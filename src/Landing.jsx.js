@@ -426,7 +426,7 @@ export default function Landing() {
                                     Support prioritaire 24/7
                                 </li>
                             </ul>
-                            <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-6 bg-gray-100 text-gray-900 rounded-xl font-semibold text-center hover:bg-gray-200 transition-colors">
+                            <a href="https://comeup.com/fr/pay/66yL3DtJMqBQ" target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-6 bg-gray-100 text-gray-900 rounded-xl font-semibold text-center hover:bg-gray-200 transition-colors">
                                 Choisir Premium
                             </a>
                         </div>
