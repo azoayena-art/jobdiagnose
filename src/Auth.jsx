@@ -515,32 +515,79 @@ export default function Auth() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
             {/* Header Premium */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
-                                <span className="text-white font-bold text-sm">JD</span>
-                            </div>
-                            <span className="text-lg font-bold text-gray-900">JobDiagnose</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Link to="/dashboard" className="hidden sm:inline-flex px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
-                                Mon espace
-                            </Link>
-                            <Link to="/" className="hidden sm:inline-flex px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
-                                Accueil
-                            </Link>
-                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
-                                <span className="text-xs">{userPlan === 'premium' ? '👑' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
-                                <span className="text-xs font-semibold text-gray-700 capitalize">{userPlan}</span>
-                            </div>
-                            <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 hover:text-red-600 font-medium transition-colors">
-                                Déconnexion
-                            </button>
-                        </div>
-                    </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
+                <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
+            </Link>
+
+            {/* Menu Desktop */}
+            <div className="hidden md:flex items-center gap-2">
+                <Link to="/dashboard" className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
+                    Mon espace
+                </Link>
+                <Link to="/" className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
+                    Accueil
+                </Link>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                    <span className="text-xs">{userPlan === 'premium' ? '' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
+                    <span className="text-xs font-semibold text-gray-700 capitalize">{userPlan}</span>
                 </div>
-            </header>
+                <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 hover:text-red-600 font-medium transition-colors">
+                    Déconnexion
+                </button>
+            </div>
+
+            {/* Bouton Hamburger Mobile */}
+            <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+                {mobileMenuOpen ? (
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                ) : (
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                )}
+            </button>
+        </div>
+
+        {/* Menu Mobile Déroulant */}
+        {mobileMenuOpen && (
+            <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
+                <Link
+                    to="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                >
+                    📊 Mon espace
+                </Link>
+                <Link
+                    to="/"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                >
+                    🏠 Accueil
+                </Link>
+                <div className="px-4 py-3 bg-gray-50 rounded-lg">
+                    <span className="text-xs font-semibold text-gray-700">
+                        Plan : {userPlan === 'premium' ? '👑 Premium' : (userPlan === 'essentiel' ? '⭐ Essentiel' : '🆓 Gratuit')}
+                    </span>
+                </div>
+                <button
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
+                >
+                    🚪 Déconnexion
+                </button>
+            </div>
+        )}
+    </div>
+</header>
 
             <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 {/* Welcome */}

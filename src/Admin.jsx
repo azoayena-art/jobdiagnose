@@ -116,7 +116,11 @@ export default function Admin() {
         <div className="min-h-screen bg-gray-100 py-8 px-4">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-                    <h1 className="text-3xl font-bold text-gray-900">Admin JobDiagnose</h1>
+                    <div className="flex items-center gap-3">
+    <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
+    <h1 className="text-2xl font-bold text-gray-900">Admin</h1>
+</div>
+
                     <div className="flex gap-2 flex-wrap">
                         <Link to="/" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">← Accueil</Link>
                         <button onClick={() => setIsAuth(false)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold">Déconnexion</button>

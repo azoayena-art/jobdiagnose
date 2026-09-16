@@ -4,6 +4,7 @@ import { databases, DB_ID, COLLECTIONS } from './appwrite';
 import { Query } from 'appwrite';
 
 export default function Landing() {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [openFaq, setOpenFaq] = useState(null);
     const [pricingList, setPricingList] = useState([]);
     const toggleFaq = (index) => setOpenFaq(openFaq === index ? null : index);
@@ -35,24 +36,80 @@ export default function Landing() {
     return (
         <div className="min-h-screen bg-white font-sans">
             <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">JD</span></div>
-                            <span className="text-xl font-bold text-gray-900">JobDiagnose</span>
-                        </div>
-                        <div className="hidden md:flex items-center gap-8">
-                            <button onClick={() => scrollToSection('features')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Fonctionnalités</button>
-                            <button onClick={() => scrollToSection('pricing')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Tarifs</button>
-                            <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">FAQ</button>
-                        </div>
-                        <div className="flex items-center gap-2">
-    <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Mon espace</Link>
-    <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">Commencer</Link>
-</div>
-                    </div>
-                </div>
-            </nav>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
+                <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
+            </Link>
+
+            {/* Menu Desktop */}
+            <div className="hidden md:flex items-center gap-8">
+                <button onClick={() => scrollToSection('features')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Fonctionnalités</button>
+                <button onClick={() => scrollToSection('pricing')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Tarifs</button>
+                <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">FAQ</button>
+            </div>
+            <div className="hidden md:flex items-center gap-3">
+                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Mon espace</Link>
+                <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">Commencer</Link>
+            </div>
+
+            {/* Bouton Hamburger Mobile */}
+            <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+                {mobileMenuOpen ? (
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                ) : (
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                )}
+            </button>
+        </div>
+
+        {/* Menu Mobile Déroulant */}
+        {mobileMenuOpen && (
+            <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
+                <button
+                    onClick={() => { scrollToSection('features'); setMobileMenuOpen(false); }}
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                >
+                     Fonctionnalités
+                </button>
+                <button
+                    onClick={() => { scrollToSection('pricing'); setMobileMenuOpen(false); }}
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                >
+                     Tarifs
+                </button>
+                <button
+                    onClick={() => { scrollToSection('faq'); setMobileMenuOpen(false); }}
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                >
+                    ❓ FAQ
+                </button>
+                <Link
+                    to="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                >
+                    📊 Mon espace
+                </Link>
+                <Link
+                    to="/auth"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold text-center hover:bg-blue-700 transition-colors"
+                >
+                    Commencer gratuitement →
+                </Link>
+            </div>
+        )}
+    </div>
+</nav>
 
             <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
                 <div className="max-w-7xl mx-auto text-center">
