@@ -24,6 +24,7 @@ export default function Auth() {
     const [uploadMessage, setUploadMessage] = useState('');
     const [aiAnalysis, setAiAnalysis] = useState(null);
     const [currentStep, setCurrentStep] = useState(1);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     
     const [freeAnalysisCount, setFreeAnalysisCount] = useState(() => {
         return parseInt(localStorage.getItem('jobdiagnose_free_count') || '0');
@@ -70,7 +71,7 @@ export default function Auth() {
         setEmail(''); setPassword(''); setSelectedFile(null); setCvText('');
         setJobOfferText(''); setAiAnalysis(null); setUploadMessage('');
         setShowPaywall(false); setActivationCode(''); setShowActivationForm(false);
-        setActivationMessage(''); setCurrentStep(1);
+        setActivationMessage(''); setCurrentStep(1); setMobileMenuOpen(false);
     };
 
     const handleActivationClick = async () => {
@@ -145,8 +146,8 @@ export default function Auth() {
     const analyzeWithAI = async (text) => {
         try {
             const prompt = jobOfferText.trim() 
-                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}. N'utilise AUCUNE autre clé.`
-                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}. N'utilise AUCUNE autre clé.`;
+                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}.`
+                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}.`;
             const response = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
             const data = await response.json();
             if (data.error) throw new Error(data.error);
@@ -451,7 +452,7 @@ export default function Auth() {
     };
 
     // ═══════════════════════════════════════════════════════
-    // PAGE DE CONNEXION / INSCRIPTION (Design Premium)
+    // PAGE DE CONNEXION / INSCRIPTION
     // ═══════════════════════════════════════════════════════
     if (!user) {
         return (
@@ -459,10 +460,7 @@ export default function Auth() {
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8">
                         <Link to="/" className="inline-flex items-center gap-2 mb-6">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <span className="text-white font-bold">JD</span>
-                            </div>
-                            <span className="text-2xl font-bold text-gray-900">JobDiagnose</span>
+                            <img src="/logo.png" alt="JobDiagnose" className="h-12 w-auto" />
                         </Link>
                         <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{isLogin ? 'Bon retour parmi nous' : 'Créez votre compte'}</h2>
                         <p className="text-gray-500 mt-2">{isLogin ? 'Connectez-vous pour analyser votre CV' : 'Commencez gratuitement en 30 secondes'}</p>
@@ -509,85 +507,85 @@ export default function Auth() {
     }
 
     // ═══════════════════════════════════════════════════════
-    // PAGE PRINCIPALE (UX Premium avec Stepper)
+    // PAGE PRINCIPALE (Avec Header et Menu Hamburger)
     // ═══════════════════════════════════════════════════════
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-            {/* Header Premium */}
+            {/* Header Premium avec Logo et Menu Hamburger */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-                <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
-            </Link>
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        {/* Logo */}
+                        <Link to="/" className="flex items-center gap-2">
+                            <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
+                        </Link>
 
-            {/* Menu Desktop */}
-            <div className="hidden md:flex items-center gap-2">
-                <Link to="/dashboard" className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
-                    Mon espace
-                </Link>
-                <Link to="/" className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
-                    Accueil
-                </Link>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
-                    <span className="text-xs">{userPlan === 'premium' ? '' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
-                    <span className="text-xs font-semibold text-gray-700 capitalize">{userPlan}</span>
+                        {/* Menu Desktop */}
+                        <div className="hidden md:flex items-center gap-2">
+                            <Link to="/dashboard" className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
+                                Mon espace
+                            </Link>
+                            <Link to="/" className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
+                                Accueil
+                            </Link>
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                                <span className="text-xs">{userPlan === 'premium' ? '' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
+                                <span className="text-xs font-semibold text-gray-700 capitalize">{userPlan}</span>
+                            </div>
+                            <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 hover:text-red-600 font-medium transition-colors">
+                                Déconnexion
+                            </button>
+                        </div>
+
+                        {/* Bouton Hamburger Mobile */}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                            {mobileMenuOpen ? (
+                                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            ) : (
+                                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Menu Mobile Déroulant */}
+                    {mobileMenuOpen && (
+                        <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
+                            <Link
+                                to="/dashboard"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                            >
+                                📊 Mon espace
+                            </Link>
+                            <Link
+                                to="/"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                            >
+                                🏠 Accueil
+                            </Link>
+                            <div className="px-4 py-3 bg-gray-50 rounded-lg">
+                                <span className="text-xs font-semibold text-gray-700">
+                                    Plan : {userPlan === 'premium' ? '👑 Premium' : (userPlan === 'essentiel' ? '⭐ Essentiel' : '🆓 Gratuit')}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                                className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
+                            >
+                                🚪 Déconnexion
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 hover:text-red-600 font-medium transition-colors">
-                    Déconnexion
-                </button>
-            </div>
-
-            {/* Bouton Hamburger Mobile */}
-            <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-                {mobileMenuOpen ? (
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                ) : (
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                )}
-            </button>
-        </div>
-
-        {/* Menu Mobile Déroulant */}
-        {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
-                <Link
-                    to="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                    📊 Mon espace
-                </Link>
-                <Link
-                    to="/"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                    🏠 Accueil
-                </Link>
-                <div className="px-4 py-3 bg-gray-50 rounded-lg">
-                    <span className="text-xs font-semibold text-gray-700">
-                        Plan : {userPlan === 'premium' ? '👑 Premium' : (userPlan === 'essentiel' ? '⭐ Essentiel' : '🆓 Gratuit')}
-                    </span>
-                </div>
-                <button
-                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
-                >
-                    🚪 Déconnexion
-                </button>
-            </div>
-        )}
-    </div>
-</header>
+            </header>
 
             <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 {/* Welcome */}
@@ -662,9 +660,7 @@ export default function Auth() {
                     </div>
                 )}
 
-                {/* ═══════════════════════════════════════════════════════
-                    STEP 1 & 2 : UPLOAD & ANALYSE
-                ═══════════════════════════════════════════════════════ */}
+                {/* STEP 1 & 2 : UPLOAD & ANALYSE */}
                 {(currentStep === 1 || currentStep === 2) && (
                     <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
                         <div className="p-6 sm:p-8 border-b border-gray-100">
@@ -793,9 +789,7 @@ export default function Auth() {
                     </div>
                 )}
 
-                {/* ═══════════════════════════════════════════════════════
-                    STEP 3 : RÉSULTATS (Dashboard Premium)
-                ═══════════════════════════════════════════════════════ */}
+                {/* STEP 3 : RÉSULTATS */}
                 {currentStep === 3 && aiAnalysis && (
                     <div className="space-y-6 animate-in fade-in duration-500">
                         {/* Score Card Principal */}
