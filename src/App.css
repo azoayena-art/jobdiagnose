@@ -1,35 +1,16 @@
-import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
-import LandingPage from './LandingPage';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import Landing from './Landing';
 import Auth from './Auth';
-import Recovery from './Recovery';
 import Admin from './Admin';
-
-function URLCleaner({ children }) {
-    const location = useLocation();
-    
-    useEffect(() => {
-        if (location.search && (location.search.includes('spm=') || location.search.includes('utm_'))) {
-            const cleanPath = location.pathname;
-            window.history.replaceState({}, document.title, cleanPath);
-        }
-    }, [location]);
-    
-    return children;
-}
 
 function App() {
     return (
         <Router>
-            <URLCleaner>
-                <Routes>
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/recovery" element={<Recovery />} />
-                    <Route path="/admin" element={<Admin />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </URLCleaner>
+            <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/admin" element={<Admin />} />
+            </Routes>
         </Router>
     );
 }
