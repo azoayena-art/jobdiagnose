@@ -616,15 +616,20 @@ export default function Auth() {
                             </div>
                             {uploadMessage && !showPaywall && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{uploadMessage}</div>}
                             {showPaywall && userPlan === 'free' && (
-                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-2">Analyses gratuites épuisées</h3>
-                                    <p className="text-sm text-gray-700 mb-4">Vous avez utilisé vos 3 analyses gratuites. Passez au niveau supérieur.</p>
-                                    <div className="grid sm:grid-cols-2 gap-3">
-                                        <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm">J'ai un code</button>
-                                        <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm">Voir les offres</a>
-                                    </div>
-                                </div>
-                            )}
+    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-2">Analyses gratuites épuisées</h3>
+        <p className="text-sm text-gray-700 mb-4">Vous avez utilisé vos 3 analyses gratuites. Découvrez nos formules pour continuer à optimiser votre CV.</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+            <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm">
+                J'ai un code
+            </button>
+            <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
+                Voir les tarifs
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+            </Link>
+        </div>
+    </div>
+)}
                             <button onClick={handleUploadCV} disabled={isUploading || isExtracting || !selectedFile || !cvText.trim() || showPaywall} className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 disabled:shadow-none flex items-center justify-center gap-2">
                                 {isUploading ? (<><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Analyse en cours...</span></>) : (<><span>{jobOfferText.trim() ? 'Analyser le matching' : 'Lancer l\'analyse'}</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg></>)}
                             </button>
