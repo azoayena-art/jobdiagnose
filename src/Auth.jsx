@@ -44,7 +44,6 @@ export default function Auth() {
     const [isActivating, setIsActivating] = useState(false);
 
     useEffect(() => { 
-        // Vérifier SI l'utilisateur vient d'un e-mail de réinitialisation (AVANT checkUser)
         const userId = searchParams.get('userId');
         const secret = searchParams.get('secret');
         
@@ -83,7 +82,6 @@ export default function Auth() {
         e.preventDefault();
         setError(''); setMessage('');
         try {
-            // URL sans hash car on utilise BrowserRouter
             const redirectUrl = window.location.origin + '/auth';
             await account.createRecovery(recoveryEmail, redirectUrl);
             setMessage('Un e-mail de réinitialisation a été envoyé. Vérifiez votre boîte de réception (et vos spams).');
@@ -189,130 +187,389 @@ export default function Auth() {
         await handleFileSelect({ target: { files: [file] } });
     };
 
+    // ═══════════════════════════════════════════════════════
+    // FONCTION ANALYSE IA AVEC MATCHING OFFRE AMÉLIORÉ
+    // ═══════════════════════════════════════════════════════
     const analyzeWithAI = async (text) => {
         try {
-            const prompt = jobOfferText.trim() 
-                ? `Tu es un expert en recrutement. Analyse la correspondance entre ce CV et cette offre. CV : ${text.substring(0, 3000)}. OFFRE : ${jobOfferText.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE : {"score": 75, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}.`
-                : `Tu es un expert en recrutement. Analyse ce CV. CV : ${text.substring(0, 3000)}. Réponds UNIQUEMENT avec un objet JSON valide. Structure EXACTE : {"score": 65, "forces": ["point 1"], "faiblesses": ["point 1"], "conseil_titre": "conseil"}.`;
-            const response = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+            const hasOffer = jobOfferText.trim().length > 0;
+            
+            const prompt = hasOffer
+                ? `Tu es un expert en recrutement avec 20 ans d'expérience. Analyse la correspondance entre ce CV et cette offre d'emploi.
+
+CV DU CANDIDAT :
+${text.substring(0, 2500)}
+
+OFFRE D'EMPLOI :
+${jobOfferText.substring(0, 2500)}
+
+Évalue la compatibilité sur 100 en considérant :
+- Les mots-clés et compétences techniques
+- L'expérience requise vs l'expérience du candidat
+- Le niveau de formation
+- Les responsabilités décrites
+
+Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
+{
+  "score": 75,
+  "forces": ["3 points forts spécifiques au matching", "point 2", "point 3"],
+  "faiblesses": ["3 écarts identifiés avec l'offre", "point 2", "point 3"],
+  "conseil_titre": "Un conseil précis pour améliorer le matching avec CETTE offre"
+}`
+                : `Tu es un expert en recrutement avec 20 ans d'expérience. Analyse ce CV de manière générale.
+
+CV DU CANDIDAT :
+${text.substring(0, 2500)}
+
+Évalue la qualité globale sur 100 en considérant :
+- La structure et la clarté
+- Les verbes d'action et réalisations chiffrées
+- Les compétences techniques
+- La mise en forme professionnelle
+
+Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
+{
+  "score": 65,
+  "forces": ["3 points forts du CV", "point 2", "point 3"],
+  "faiblesses": ["3 axes d'amélioration", "point 2", "point 3"],
+  "conseil_titre": "Un conseil précis pour améliorer ce CV"
+}`;
+            
+            console.log(' Envoi du prompt à l\'IA...', hasOffer ? '(avec offre)' : '(sans offre)');
+            
+            const response = await fetch('/api/gemini', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ prompt }) 
+            });
+            
             const data = await response.json();
+            
             if (data.error) throw new Error(data.error);
+            
             const raw = data.result;
+            
+            console.log('📥 Réponse IA reçue:', raw);
+            
             return {
                 score: typeof raw.score === 'number' ? raw.score : 65,
-                forces: Array.isArray(raw.forces) ? raw.forces : ["Expérience pertinente"],
-                faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : ["Manque de chiffres"],
-                conseil_titre: raw.conseil_titre || "Ajoutez des réalisations chiffrées."
+                forces: Array.isArray(raw.forces) ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
+                faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
+                conseil_titre: raw.conseil_titre || "Ajoutez des réalisations chiffrées et des mots-clés pertinents."
             };
         } catch (error) {
-            return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
+            console.error('❌ Erreur IA:', error);
+            return { 
+                score: 65, 
+                forces: ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"], 
+                faiblesses: ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"], 
+                conseil_titre: "Ajoutez des réalisations chiffrées et des mots-clés pertinents." 
+            };
         }
     };
 
+    // ═══════════════════════════════════════════════════════
+    // FONCTION EXPORT PDF AVEC MISE EN PAGE AMÉLIORÉE
+    // ══════════════════════════════════════════════════════
     const exportToPDF = () => {
         if (!aiAnalysis || !user) return;
+        
         const doc = new jsPDF();
-        const pageWidth = 210; const margin = 20; const contentWidth = pageWidth - (margin * 2);
+        const pageWidth = 210;
+        const margin = 20;
+        const contentWidth = pageWidth - (margin * 2);
         let yPos = 0;
 
-        doc.setFillColor(30, 58, 138); doc.rect(0, 0, pageWidth, 60, 'F');
-        doc.setTextColor(255, 255, 255); doc.setFontSize(32); doc.setFont('helvetica', 'bold');
-        doc.text('JobDiagnose', pageWidth / 2, 25, { align: 'center' });
-        doc.setFontSize(14); doc.text('Rapport d\'Analyse Professionnelle de CV', pageWidth / 2, 38, { align: 'center' });
-        doc.setFontSize(10); doc.text(`Genere le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, pageWidth / 2, 50, { align: 'center' });
+        // ═══════════════════════════════════════════════════════
+        // PAGE 1 : EN-TÊTE + SCORE + RÉSUMÉ
+        // ═══════════════════════════════════════════════════════
+        
+        // Header bleu
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 50, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(28);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JobDiagnose', pageWidth / 2, 20, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Rapport d\'Analyse Professionnelle de CV', pageWidth / 2, 30, { align: 'center' });
+        
+        doc.setFontSize(9);
+        const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        doc.text(`Généré le ${dateStr}`, pageWidth / 2, 40, { align: 'center' });
 
-        yPos = 75; doc.setTextColor(30, 30, 30); doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.text('INFORMATIONS CANDIDAT', margin, yPos);
-        yPos += 8; doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-        doc.text(`Nom : ${user.name}`, margin, yPos); yPos += 6;
-        doc.text(`Email : ${user.email}`, margin, yPos); yPos += 6;
+        // Informations candidat
+        yPos = 65;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INFORMATIONS CANDIDAT', margin, yPos);
+        
+        yPos += 8;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Nom : ${user.name}`, margin, yPos);
+        yPos += 6;
+        doc.text(`Email : ${user.email}`, margin, yPos);
+        yPos += 6;
         const planLabel = userPlan === 'premium' ? 'Premium' : (userPlan === 'essentiel' ? 'Essentiel' : 'Gratuit');
         doc.text(`Plan : ${planLabel}`, margin, yPos);
 
-        yPos = 110; doc.setFillColor(240, 245, 255); doc.roundedRect(margin, yPos, contentWidth, 50, 3, 3, 'F');
-        doc.setDrawColor(30, 58, 138); doc.setLineWidth(0.5); doc.roundedRect(margin, yPos, contentWidth, 50, 3, 3, 'S');
-        yPos += 15; doc.setTextColor(30, 58, 138); doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+        // Score global
+        yPos = 100;
+        doc.setFillColor(240, 245, 255);
+        doc.roundedRect(margin, yPos, contentWidth, 45, 3, 3, 'F');
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(margin, yPos, contentWidth, 45, 3, 3, 'S');
+        
+        yPos += 12;
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
         doc.text('SCORE GLOBAL DE VOTRE CV', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 20; doc.setFontSize(36);
-        doc.setTextColor(aiAnalysis.score >= 70 ? 34 : (aiAnalysis.score >= 50 ? 234 : 220), aiAnalysis.score >= 70 ? 197 : (aiAnalysis.score >= 50 ? 179 : 8), aiAnalysis.score >= 70 ? 94 : (aiAnalysis.score >= 50 ? 8 : 38));
+        
+        yPos += 18;
+        doc.setFontSize(32);
+        const scoreColor = aiAnalysis.score >= 70 ? [34, 197, 94] : (aiAnalysis.score >= 50 ? [234, 179, 8] : [220, 38, 38]);
+        doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
         doc.text(`${aiAnalysis.score}/100`, pageWidth / 2, yPos, { align: 'center' });
 
-        yPos += 10; const barWidth = 120; const barX = (pageWidth - barWidth) / 2;
-        doc.setFillColor(220, 220, 220); doc.rect(barX, yPos, barWidth, 6, 'F');
-        doc.setFillColor(30, 58, 138); doc.rect(barX, yPos, (barWidth * aiAnalysis.score) / 100, 6, 'F');
+        // Barre de progression
+        yPos += 8;
+        const barWidth = 100;
+        const barX = (pageWidth - barWidth) / 2;
+        doc.setFillColor(220, 220, 220);
+        doc.rect(barX, yPos, barWidth, 5, 'F');
+        doc.setFillColor(30, 58, 138);
+        doc.rect(barX, yPos, (barWidth * aiAnalysis.score) / 100, 5, 'F');
 
-        yPos = 180; doc.setTextColor(30, 30, 30); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text('RESUME EXECUTIF', margin, yPos);
-        yPos += 3; doc.setDrawColor(30, 58, 138); doc.setLineWidth(0.8); doc.line(margin, yPos, margin + 50, yPos);
-        yPos += 10; doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100. ${aiAnalysis.score >= 70 ? 'Il presente de solides atouts.' : aiAnalysis.score >= 50 ? 'Il contient des elements pertinents mais necessite des ameliorations.' : 'Il necessite des retravail importants.'} Ce rapport detaille vos points forts, les axes d'amelioration et un plan d'action concret.`;
-        doc.text(doc.splitTextToSize(resumeText, contentWidth), margin, yPos);
-        yPos += 30;
+        // Résumé exécutif
+        yPos = 165;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('RÉSUMÉ EXÉCUTIF', margin, yPos);
+        
+        yPos += 3;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.8);
+        doc.line(margin, yPos, margin + 40, yPos);
+        
+        yPos += 8;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100. ${
+            aiAnalysis.score >= 70 ? 'Il présente de solides atouts qui devraient attirer l\'attention des recruteurs.' : 
+            aiAnalysis.score >= 50 ? 'Il contient des éléments pertinents mais nécessite des améliorations pour être compétitif.' : 
+            'Il nécessite des retravail importants avant d\'être envoyé aux recruteurs.'
+        } Ce rapport détaille vos points forts, les axes d\'amélioration et un plan d\'action concret.`;
+        
+        const resumeLines = doc.splitTextToSize(resumeText, contentWidth);
+        doc.text(resumeLines, margin, yPos);
+        yPos += resumeLines.length * 4.5 + 8;
 
-        doc.setFillColor(255, 248, 220); doc.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'F');
-        doc.setDrawColor(218, 165, 32); doc.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'S');
-        yPos += 8; doc.setTextColor(139, 90, 0); doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text('CONSEIL CLE :', margin + 5, yPos);
-        yPos += 6; doc.setFont('helvetica', 'normal');
-        doc.text(doc.splitTextToSize(aiAnalysis.conseil_titre || "Aucun conseil disponible.", contentWidth - 10), margin + 5, yPos);
+        // Conseil clé
+        doc.setFillColor(255, 248, 220);
+        doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'F');
+        doc.setDrawColor(218, 165, 32);
+        doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'S');
+        
+        yPos += 6;
+        doc.setTextColor(139, 90, 0);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CONSEIL CLÉ :', margin + 5, yPos);
+        
+        yPos += 6;
+        doc.setFont('helvetica', 'normal');
+        const conseilLines = doc.splitTextToSize(aiAnalysis.conseil_titre || "Aucun conseil disponible.", contentWidth - 10);
+        doc.text(conseilLines, margin + 5, yPos);
 
-        doc.addPage(); yPos = 20;
-        doc.setFillColor(30, 58, 138); doc.rect(0, 0, pageWidth, 15, 'F');
-        doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-        doc.text('JobDiagnose - Analyse Detaillee', margin, 10); doc.text('Page 2/3', pageWidth - margin, 10, { align: 'right' });
-        yPos = 30; doc.setTextColor(30, 30, 30); doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.text('ANALYSE DETAILLEE', margin, yPos);
-        yPos += 5; doc.setDrawColor(30, 58, 138); doc.setLineWidth(0.8); doc.line(margin, yPos, margin + 60, yPos); yPos += 12;
+        // ═══════════════════════════════════════════════════════
+        // PAGE 2 : ANALYSE DÉTAILLÉE
+        // ═══════════════════════════════════════════════════════
+        doc.addPage();
+        yPos = 20;
+        
+        // Header page 2
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 12, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JobDiagnose - Analyse Détaillée', margin, 8);
+        doc.text('Page 2/3', pageWidth - margin, 8, { align: 'right' });
 
-        doc.setFillColor(232, 245, 233); doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
-        doc.setTextColor(27, 94, 32); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text('POINTS FORTS IDENTIFIES', margin + 5, yPos + 7); yPos += 15;
-        doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        yPos = 25;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('ANALYSE DÉTAILLÉE', margin, yPos);
+        
+        yPos += 4;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.8);
+        doc.line(margin, yPos, margin + 50, yPos);
+        yPos += 10;
+
+        // Points forts
+        doc.setFillColor(232, 245, 233);
+        doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
+        doc.setTextColor(27, 94, 32);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('POINTS FORTS IDENTIFIÉS', margin + 5, yPos + 6);
+        yPos += 12;
+
+        doc.setTextColor(30, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        
         if (aiAnalysis.forces && aiAnalysis.forces.length > 0) {
             aiAnalysis.forces.forEach((force) => {
-                if (yPos > 270) { doc.addPage(); yPos = 20; }
-                doc.setTextColor(27, 94, 32); doc.setFont('helvetica', 'bold'); doc.text('>', margin + 2, yPos);
-                doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'normal');
-                doc.text(doc.splitTextToSize(force, contentWidth - 15), margin + 10, yPos);
-                yPos += 10;
+                if (yPos > 260) { doc.addPage(); yPos = 20; }
+                doc.setTextColor(27, 94, 32);
+                doc.setFont('helvetica', 'bold');
+                doc.text('>', margin + 2, yPos);
+                doc.setTextColor(30, 30, 30);
+                doc.setFont('helvetica', 'normal');
+                const forceLines = doc.splitTextToSize(force, contentWidth - 12);
+                doc.text(forceLines, margin + 8, yPos);
+                yPos += forceLines.length * 4.5 + 3;
             });
         }
 
-        yPos += 5; doc.setFillColor(255, 243, 224); doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
-        doc.setTextColor(230, 81, 0); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text('AXES D\'AMELIORATION', margin + 5, yPos + 7); yPos += 15;
-        doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        yPos += 5;
+        
+        // Axes d'amélioration
+        doc.setFillColor(255, 243, 224);
+        doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
+        doc.setTextColor(230, 81, 0);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('AXES D\'AMÉLIORATION', margin + 5, yPos + 6);
+        yPos += 12;
+
+        doc.setTextColor(30, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        
         if (aiAnalysis.faiblesses && aiAnalysis.faiblesses.length > 0) {
             aiAnalysis.faiblesses.forEach((faiblesse) => {
-                if (yPos > 270) { doc.addPage(); yPos = 20; }
-                doc.setTextColor(230, 81, 0); doc.setFont('helvetica', 'bold'); doc.text('-', margin + 2, yPos);
-                doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'normal');
-                doc.text(doc.splitTextToSize(faiblesse, contentWidth - 15), margin + 10, yPos);
-                yPos += 10;
+                if (yPos > 260) { doc.addPage(); yPos = 20; }
+                doc.setTextColor(230, 81, 0);
+                doc.setFont('helvetica', 'bold');
+                doc.text('-', margin + 2, yPos);
+                doc.setTextColor(30, 30, 30);
+                doc.setFont('helvetica', 'normal');
+                const faibLines = doc.splitTextToSize(faiblesse, contentWidth - 12);
+                doc.text(faibLines, margin + 8, yPos);
+                yPos += faibLines.length * 4.5 + 3;
             });
         }
 
-        doc.addPage(); yPos = 20;
-        doc.setFillColor(30, 58, 138); doc.rect(0, 0, pageWidth, 15, 'F');
-        doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-        doc.text('JobDiagnose - Plan d\'Action', margin, 10); doc.text('Page 3/3', pageWidth - margin, 10, { align: 'right' });
-        yPos = 30; doc.setTextColor(30, 30, 30); doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.text('PLAN D\'ACTION PRIORISE', margin, yPos);
-        yPos += 5; doc.setDrawColor(30, 58, 138); doc.setLineWidth(0.8); doc.line(margin, yPos, margin + 70, yPos); yPos += 12;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(30, 30, 30);
+        // ═══════════════════════════════════════════════════════
+        // PAGE 3 : PLAN D'ACTION
+        // ═══════════════════════════════════════════════════════
+        doc.addPage();
+        yPos = 20;
+        
+        // Header page 3
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 12, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('JobDiagnose - Plan d\'Action', margin, 8);
+        doc.text('Page 3/3', pageWidth - margin, 8, { align: 'right' });
+
+        yPos = 25;
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PLAN D\'ACTION PRIORISÉ', margin, yPos);
+        
+        yPos += 4;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.8);
+        doc.line(margin, yPos, margin + 60, yPos);
+        yPos += 10;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(30, 30, 30);
 
         const actions = [
-            { priority: 'PRIORITE HAUTE', color: [220, 38, 38], text: 'Corrigez immediatement les axes d\'amelioration identifies.' },
-            { priority: 'PRIORITE MOYENNE', color: [234, 179, 8], text: 'Enrichissez votre CV avec des realisations chiffrees.' },
-            { priority: 'PRIORITE BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme et l\'orthographe.' }
+            { priority: 'PRIORITÉ HAUTE', color: [220, 38, 38], text: 'Corrigez immédiatement les axes d\'amélioration identifiés ci-dessus.' },
+            { priority: 'PRIORITÉ MOYENNE', color: [234, 179, 8], text: 'Enrichissez votre CV avec des réalisations chiffrées et des verbes d\'action.' },
+            { priority: 'PRIORITÉ BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme et vérifiez l\'orthographe.' }
         ];
+        
         actions.forEach((action) => {
-            if (yPos > 250) { doc.addPage(); yPos = 20; }
-            doc.setFillColor(action.color[0], action.color[1], action.color[2]); doc.roundedRect(margin, yPos, contentWidth, 8, 1, 1, 'F');
-            doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.text(action.priority, margin + 3, yPos + 5.5);
-            yPos += 12; doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-            doc.text(doc.splitTextToSize(action.text, contentWidth), margin + 5, yPos); yPos += 15;
+            if (yPos > 240) { doc.addPage(); yPos = 20; }
+            doc.setFillColor(action.color[0], action.color[1], action.color[2]);
+            doc.roundedRect(margin, yPos, contentWidth, 7, 1, 1, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text(action.priority, margin + 3, yPos + 5);
+            yPos += 10;
+            doc.setTextColor(30, 30, 30);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            const actionLines = doc.splitTextToSize(action.text, contentWidth);
+            doc.text(actionLines, margin + 5, yPos);
+            yPos += actionLines.length * 4.5 + 6;
         });
 
+        yPos += 5;
+        
+        // Checklist finale
+        doc.setFillColor(245, 245, 250);
+        doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CHECKLIST FINALE', margin + 5, yPos + 6);
+        yPos += 12;
+        
+        doc.setTextColor(30, 30, 30);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        const checklist = [
+            '[ ]  CV tenu sur 1 à 2 pages maximum',
+            '[ ]  Photo professionnelle',
+            '[ ]  Titre de poste clair',
+            '[ ]  Résumé professionnel en 3-4 lignes',
+            '[ ]  Expériences avec verbes d\'action',
+            '[ ]  Compétences techniques séparées',
+            '[ ]  Formation à jour',
+            '[ ]  Aucune faute d\'orthographe',
+            '[ ]  Format PDF uniquement',
+            '[ ]  Nom du fichier professionnel'
+        ];
+        
+        checklist.forEach(item => {
+            if (yPos > 260) { doc.addPage(); yPos = 20; }
+            doc.text(item, margin + 5, yPos);
+            yPos += 6;
+        });
+
+        // Footer sur toutes les pages
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
-            doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150, 150, 150); doc.setFont('helvetica', 'normal');
-            doc.text(`JobDiagnose (c) ${new Date().getFullYear()} - Rapport confidentiel`, pageWidth / 2, 290, { align: 'center' });
+            doc.setPage(i);
+            doc.setFontSize(7);
+            doc.setTextColor(150, 150, 150);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`JobDiagnose © ${new Date().getFullYear()} - Rapport confidentiel`, pageWidth / 2, 290, { align: 'center' });
             doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, 290, { align: 'right' });
         }
+        
         doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
@@ -371,7 +628,6 @@ export default function Auth() {
                         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">{error}</div>}
                         {message && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 text-sm">{message}</div>}
 
-                        {/* Formulaire de Connexion */}
                         {authMode === 'login' && (
                             <form onSubmit={handleAuth} className="space-y-4">
                                 <div>
@@ -393,7 +649,6 @@ export default function Auth() {
                             </form>
                         )}
 
-                        {/* Formulaire d'Inscription */}
                         {authMode === 'register' && (
                             <form onSubmit={handleAuth} className="space-y-4">
                                 <div>
@@ -414,7 +669,6 @@ export default function Auth() {
                             </form>
                         )}
 
-                        {/* Formulaire Mot de passe oublié */}
                         {authMode === 'forgot' && (
                             <form onSubmit={handleForgotPassword} className="space-y-4">
                                 <div>
@@ -427,7 +681,6 @@ export default function Auth() {
                             </form>
                         )}
 
-                        {/* Formulaire de Réinitialisation */}
                         {authMode === 'reset' && (
                             <form onSubmit={handleResetPassword} className="space-y-4">
                                 <div>
@@ -444,7 +697,6 @@ export default function Auth() {
                             </form>
                         )}
 
-                        {/* Liens de navigation entre les formulaires */}
                         <div className="mt-6 text-center space-y-2">
                             {authMode === 'login' && (
                                 <button onClick={() => { setAuthMode('register'); setError(''); setMessage(''); }} className="text-sm text-gray-600 hover:text-blue-600 transition-colors">
@@ -472,7 +724,7 @@ export default function Auth() {
         );
     }
 
-    // ═══════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════
     // PAGE PRINCIPALE (Utilisateur connecté)
     // ═══════════════════════════════════════════════════════
     return (
@@ -616,20 +868,18 @@ export default function Auth() {
                             </div>
                             {uploadMessage && !showPaywall && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{uploadMessage}</div>}
                             {showPaywall && userPlan === 'free' && (
-    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-2">Analyses gratuites épuisées</h3>
-        <p className="text-sm text-gray-700 mb-4">Vous avez utilisé vos 3 analyses gratuites. Découvrez nos formules pour continuer à optimiser votre CV.</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-            <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm">
-                J'ai un code
-            </button>
-            <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
-                Voir les tarifs
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-            </Link>
-        </div>
-    </div>
-)}
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-2">Analyses gratuites épuisées</h3>
+                                    <p className="text-sm text-gray-700 mb-4">Vous avez utilisé vos 3 analyses gratuites. Découvrez nos formules pour continuer à optimiser votre CV.</p>
+                                    <div className="grid sm:grid-cols-2 gap-3">
+                                        <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm">J'ai un code</button>
+                                        <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
+                                            Voir les tarifs
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                        </Link>
+                                    </div>
+                                </div>
+                            )}
                             <button onClick={handleUploadCV} disabled={isUploading || isExtracting || !selectedFile || !cvText.trim() || showPaywall} className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 disabled:shadow-none flex items-center justify-center gap-2">
                                 {isUploading ? (<><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Analyse en cours...</span></>) : (<><span>{jobOfferText.trim() ? 'Analyser le matching' : 'Lancer l\'analyse'}</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg></>)}
                             </button>
