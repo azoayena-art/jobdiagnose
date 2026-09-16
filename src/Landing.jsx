@@ -46,10 +46,10 @@ export default function Landing() {
                             <button onClick={() => scrollToSection('pricing')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">Tarifs</button>
                             <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer">FAQ</button>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <Link to="/auth" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Connexion</Link>
-                            <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">Commencer</Link>
-                        </div>
+                        <div className="flex items-center gap-2">
+    <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Mon espace</Link>
+    <Link to="/auth" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">Commencer</Link>
+</div>
                     </div>
                 </div>
             </nav>

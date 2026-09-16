@@ -405,10 +405,11 @@ export default function Auth() {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-4xl mx-auto">
-                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                        <Link to="/" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">← Accueil</Link>
-                        <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">Se déconnecter</button>
-                    </div>
+                    <div className="flex gap-2 flex-wrap">
+    <Link to="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200">← Accueil</Link>
+    <Link to="/dashboard" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">📊 Mon Dashboard</Link>
+    <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">Déconnexion</button>
+</div>
 
                     <div className="text-center mb-10">
                         <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg mb-4">
