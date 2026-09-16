@@ -10,7 +10,6 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 export default function Auth() {
     const [searchParams] = useSearchParams();
     
-    // États d'authentification
     const [authMode, setAuthMode] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -24,7 +23,6 @@ export default function Auth() {
     const [user, setUser] = useState(null);
     const [userPlan, setUserPlan] = useState('free');
     
-    // États de l'analyse
     const [selectedFile, setSelectedFile] = useState(null);
     const [cvText, setCvText] = useState('');
     const [jobOfferText, setJobOfferText] = useState('');
@@ -35,7 +33,6 @@ export default function Auth() {
     const [currentStep, setCurrentStep] = useState(1);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     
-    // États des codes et paywall
     const [freeAnalysisCount, setFreeAnalysisCount] = useState(() => parseInt(localStorage.getItem('jobdiagnose_free_count') || '0'));
     const [showPaywall, setShowPaywall] = useState(false);
     const [activationCode, setActivationCode] = useState('');
@@ -188,54 +185,83 @@ export default function Auth() {
     };
 
     // ═══════════════════════════════════════════════════════
-    // FONCTION ANALYSE IA AVEC MATCHING OFFRE AMÉLIORÉ
+    // FONCTION ANALYSE IA (MODIFIÉE POUR LE MATCHING RÉEL)
     // ═══════════════════════════════════════════════════════
     const analyzeWithAI = async (text) => {
         try {
-            const hasOffer = jobOfferText.trim().length > 0;
+            const hasOffer = jobOfferText.trim().length > 50;
             
-            const prompt = hasOffer
-                ? `Tu es un expert en recrutement avec 20 ans d'expérience. Analyse la correspondance entre ce CV et cette offre d'emploi.
+            let prompt = '';
+            
+            if (hasOffer) {
+                prompt = `Tu es un expert en recrutement et en analyse de candidatures. Tu dois évaluer le MATCHING entre un CV et une offre d'emploi.
 
 CV DU CANDIDAT :
-${text.substring(0, 2500)}
+"""
+${text.substring(0, 3000)}
+"""
 
 OFFRE D'EMPLOI :
-${jobOfferText.substring(0, 2500)}
+"""
+${jobOfferText.substring(0, 3000)}
+"""
 
-Évalue la compatibilité sur 100 en considérant :
-- Les mots-clés et compétences techniques
-- L'expérience requise vs l'expérience du candidat
-- Le niveau de formation
-- Les responsabilités décrites
+Évalue le score de matching sur 100 en analysant ces 5 critères (20 points chacun) :
 
-Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
+1. COMPÉTENCES TECHNIQUES (20 pts) : Le CV contient-il les compétences techniques demandées dans l'offre ?
+2. EXPÉRIENCE (20 pts) : L'expérience du candidat correspond-elle aux années et au niveau requis ?
+3. FORMATION (20 pts) : Le niveau de formation correspond-il aux exigences ?
+4. MOTS-CLÉS (20 pts) : Les mots-clés de l'offre apparaissent-ils dans le CV ?
+5. RESPONSABILITÉS (20 pts) : Les missions décrites dans l'offre correspondent-elles à l'expérience du candidat ?
+
+RÈGLES DE SCORING STRICTES :
+- Si le CV correspond parfaitement à l'offre : score entre 80 et 95
+- Si le CV correspond bien mais avec quelques écarts : score entre 60 et 79
+- Si le CV correspond partiellement : score entre 40 et 59
+- Si le CV ne correspond pas du tout à l'offre : score entre 10 et 39
+- Ne donne JAMAIS un score supérieur à 95
+- Ne donne JAMAIS un score inférieur à 10
+
+Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après, sans markdown) :
 {
-  "score": 75,
-  "forces": ["3 points forts spécifiques au matching", "point 2", "point 3"],
-  "faiblesses": ["3 écarts identifiés avec l'offre", "point 2", "point 3"],
-  "conseil_titre": "Un conseil précis pour améliorer le matching avec CETTE offre"
-}`
-                : `Tu es un expert en recrutement avec 20 ans d'expérience. Analyse ce CV de manière générale.
+  "score": 72,
+  "matching_summary": "Une phrase expliquant le niveau de compatibilité global",
+  "forces": ["3 points forts du matching spécifiques à cette offre", "point 2", "point 3"],
+  "faiblesses": ["3 écarts précis entre le CV et cette offre", "point 2", "point 3"],
+  "conseil_titre": "Un conseil très précis pour améliorer le matching AVEC CETTE OFFRE"
+}`;
+            } else {
+                prompt = `Tu es un expert en recrutement. Analyse ce CV de manière générale (sans offre spécifique).
 
 CV DU CANDIDAT :
-${text.substring(0, 2500)}
+"""
+${text.substring(0, 3000)}
+"""
 
-Évalue la qualité globale sur 100 en considérant :
-- La structure et la clarté
-- Les verbes d'action et réalisations chiffrées
-- Les compétences techniques
-- La mise en forme professionnelle
+Évalue la qualité globale du CV sur 100 selon ces critères :
+- Structure et clarté (20 pts)
+- Verbes d'action et réalisations chiffrées (20 pts)
+- Compétences techniques bien présentées (20 pts)
+- Mise en forme professionnelle (20 pts)
+- Absence de fautes et concision (20 pts)
+
+RÈGLES DE SCORING :
+- CV excellent et professionnel : 75-90
+- CV correct mais perfectible : 55-74
+- CV à retravailler : 35-54
+- CV très faible : 10-34
 
 Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
 {
   "score": 65,
+  "matching_summary": "Une phrase sur la qualité générale du CV",
   "forces": ["3 points forts du CV", "point 2", "point 3"],
   "faiblesses": ["3 axes d'amélioration", "point 2", "point 3"],
   "conseil_titre": "Un conseil précis pour améliorer ce CV"
 }`;
+            }
             
-            console.log(' Envoi du prompt à l\'IA...', hasOffer ? '(avec offre)' : '(sans offre)');
+            console.log('📤 Envoi du prompt à l\'IA...', hasOffer ? '(avec offre - mode matching)' : '(sans offre - mode général)');
             
             const response = await fetch('/api/gemini', { 
                 method: 'POST', 
@@ -249,10 +275,11 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
             
             const raw = data.result;
             
-            console.log('📥 Réponse IA reçue:', raw);
+            console.log(' Réponse IA reçue:', raw);
             
             return {
-                score: typeof raw.score === 'number' ? raw.score : 65,
+                score: typeof raw.score === 'number' ? Math.max(10, Math.min(95, raw.score)) : 65,
+                matching_summary: raw.matching_summary || (hasOffer ? "Analyse de matching avec l'offre" : "Analyse générale du CV"),
                 forces: Array.isArray(raw.forces) ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
                 faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
                 conseil_titre: raw.conseil_titre || "Ajoutez des réalisations chiffrées et des mots-clés pertinents."
@@ -261,6 +288,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
             console.error('❌ Erreur IA:', error);
             return { 
                 score: 65, 
+                matching_summary: "Analyse non disponible",
                 forces: ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"], 
                 faiblesses: ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"], 
                 conseil_titre: "Ajoutez des réalisations chiffrées et des mots-clés pertinents." 
@@ -268,8 +296,8 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         }
     };
 
-    // ═══════════════════════════════════════════════════════
-    // FONCTION EXPORT PDF AVEC MISE EN PAGE AMÉLIORÉE
+    // ══════════════════════════════════════════════════════
+    // FONCTION EXPORT PDF (Mise en page améliorée)
     // ══════════════════════════════════════════════════════
     const exportToPDF = () => {
         if (!aiAnalysis || !user) return;
@@ -280,11 +308,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         const contentWidth = pageWidth - (margin * 2);
         let yPos = 0;
 
-        // ═══════════════════════════════════════════════════════
-        // PAGE 1 : EN-TÊTE + SCORE + RÉSUMÉ
-        // ═══════════════════════════════════════════════════════
-        
-        // Header bleu
         doc.setFillColor(30, 58, 138);
         doc.rect(0, 0, pageWidth, 50, 'F');
         
@@ -301,7 +324,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
         doc.text(`Généré le ${dateStr}`, pageWidth / 2, 40, { align: 'center' });
 
-        // Informations candidat
         yPos = 65;
         doc.setTextColor(30, 30, 30);
         doc.setFontSize(10);
@@ -318,7 +340,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         const planLabel = userPlan === 'premium' ? 'Premium' : (userPlan === 'essentiel' ? 'Essentiel' : 'Gratuit');
         doc.text(`Plan : ${planLabel}`, margin, yPos);
 
-        // Score global
         yPos = 100;
         doc.setFillColor(240, 245, 255);
         doc.roundedRect(margin, yPos, contentWidth, 45, 3, 3, 'F');
@@ -338,7 +359,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
         doc.text(`${aiAnalysis.score}/100`, pageWidth / 2, yPos, { align: 'center' });
 
-        // Barre de progression
         yPos += 8;
         const barWidth = 100;
         const barX = (pageWidth - barWidth) / 2;
@@ -347,7 +367,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         doc.setFillColor(30, 58, 138);
         doc.rect(barX, yPos, (barWidth * aiAnalysis.score) / 100, 5, 'F');
 
-        // Résumé exécutif
         yPos = 165;
         doc.setTextColor(30, 30, 30);
         doc.setFontSize(10);
@@ -372,7 +391,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         doc.text(resumeLines, margin, yPos);
         yPos += resumeLines.length * 4.5 + 8;
 
-        // Conseil clé
         doc.setFillColor(255, 248, 220);
         doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'F');
         doc.setDrawColor(218, 165, 32);
@@ -389,13 +407,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         const conseilLines = doc.splitTextToSize(aiAnalysis.conseil_titre || "Aucun conseil disponible.", contentWidth - 10);
         doc.text(conseilLines, margin + 5, yPos);
 
-        // ═══════════════════════════════════════════════════════
-        // PAGE 2 : ANALYSE DÉTAILLÉE
-        // ═══════════════════════════════════════════════════════
         doc.addPage();
         yPos = 20;
         
-        // Header page 2
         doc.setFillColor(30, 58, 138);
         doc.rect(0, 0, pageWidth, 12, 'F');
         doc.setTextColor(255, 255, 255);
@@ -416,7 +430,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         doc.line(margin, yPos, margin + 50, yPos);
         yPos += 10;
 
-        // Points forts
         doc.setFillColor(232, 245, 233);
         doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
         doc.setTextColor(27, 94, 32);
@@ -445,7 +458,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
 
         yPos += 5;
         
-        // Axes d'amélioration
         doc.setFillColor(255, 243, 224);
         doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
         doc.setTextColor(230, 81, 0);
@@ -472,13 +484,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
             });
         }
 
-        // ═══════════════════════════════════════════════════════
-        // PAGE 3 : PLAN D'ACTION
-        // ═══════════════════════════════════════════════════════
         doc.addPage();
         yPos = 20;
         
-        // Header page 3
         doc.setFillColor(30, 58, 138);
         doc.rect(0, 0, pageWidth, 12, 'F');
         doc.setTextColor(255, 255, 255);
@@ -528,7 +536,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
 
         yPos += 5;
         
-        // Checklist finale
         doc.setFillColor(245, 245, 250);
         doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
         doc.setTextColor(30, 58, 138);
@@ -559,7 +566,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
             yPos += 6;
         });
 
-        // Footer sur toutes les pages
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
@@ -599,9 +605,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         } finally { setIsUploading(false); }
     };
 
-    // ═══════════════════════════════════════════════════════
-    // PAGE DE CONNEXION / INSCRIPTION / MOT DE PASSE OUBLIÉ
-    // ═══════════════════════════════════════════════════════
     if (!user) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center py-12 px-4">
@@ -724,9 +727,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
         );
     }
 
-    // ══════════════════════════════════════════════════════
-    // PAGE PRINCIPALE (Utilisateur connecté)
-    // ═══════════════════════════════════════════════════════
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-100">
@@ -764,7 +764,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
 
             <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <div className="mb-10">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Bonjour {user.name.split(' ')[0]} </h1>
                     <p className="text-gray-500 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
                 </div>
 
@@ -911,7 +911,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
                                         <h2 className="text-2xl sm:text-3xl font-bold mb-2">
                                             {aiAnalysis.score >= 70 ? 'Votre CV est très compétitif' : aiAnalysis.score >= 50 ? 'Bon point de départ' : 'Des améliorations nécessaires'}
                                         </h2>
-                                        <p className="text-blue-100 text-sm sm:text-base">{aiAnalysis.conseil_titre}</p>
+                                        {/* MODIFICATION UNIQUE ICI : Ajout de matching_summary */}
+                                        <p className="text-blue-100 text-sm sm:text-base mb-2">{aiAnalysis.matching_summary}</p>
+                                        <p className="text-white/80 text-xs sm:text-sm italic">{aiAnalysis.conseil_titre}</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-white/20">
