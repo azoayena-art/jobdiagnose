@@ -147,7 +147,9 @@ export default function Landing() {
                     ) : (
                         <div className="grid md:grid-cols-3 gap-8">
                             {pricingList.map((plan) => {
-                                // ✅ LOGIQUE DE LIEN COMEUP : Premium a son lien dédié, les autres utilisent le lien service
+                                // ✅ LOGIQUE INTELLIGENTE : Détecte si c'est le plan gratuit
+                                const isFree = plan.name.toLowerCase().includes('gratuit') || plan.name.toLowerCase().includes('free') || plan.price === 0;
+                                
                                 let comeUpLink = "https://comeup.com/fr/service/188817/identifier-ce-qui-bloque-vos-candidatures-et-ameliorer-votre-cv";
                                 if (plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('illimité')) {
                                     comeUpLink = "https://comeup.com/fr/pay/66yL3DtJMqBQ";
@@ -176,14 +178,25 @@ export default function Landing() {
                                                 </li>
                                             ))}
                                         </ul>
-                                        <a 
-                                            href={comeUpLink} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
-                                        >
-                                            Choisir ce plan
-                                        </a>
+                                        
+                                        {/* ✅ BOUTON ADAPTATIF : Lien interne pour Gratuit, Lien externe ComeUp pour les autres */}
+                                        {isFree ? (
+                                            <Link 
+                                                to="/auth"
+                                                className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all block ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                                            >
+                                                Commencer gratuitement
+                                            </Link>
+                                        ) : (
+                                            <a 
+                                                href={comeUpLink} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all block ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                                            >
+                                                Choisir ce plan
+                                            </a>
+                                        )}
                                     </div>
                                 );
                             })}
