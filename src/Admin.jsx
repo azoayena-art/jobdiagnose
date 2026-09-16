@@ -52,21 +52,25 @@ export default function Admin() {
         setNewCode({ ...newCode, code: `JD-${prefix}-${random}` });
     };
 
-    const handleCreateCode = async () => {
-        if (!newCode.code) return;
-        try {
-            await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
-                code: newCode.code,
-                plan: newCode.plan,
-                used: false,
-                usedBy: '',
-                usedAt: ''
-            });
-            setNewCode({ code: '', plan: 'essentiel' });
-            loadCodes();
-            alert('✅ Code créé avec succès !');
-        } catch (e) { alert('❌ Erreur: ' + e.message); }
-    };
+const handleCreateCode = async () => {
+    if (!newCode.code) return;
+    try {
+        await databases.createDocument(DB_ID, COLLECTIONS.CODES, ID.unique(), {
+            code: newCode.code,
+            plan: newCode.plan,
+            type: newCode.plan, // ✅ AJOUTÉ : envoie le type
+            used: false,
+            usedBy: '',
+            usedAt: ''
+        });
+        setNewCode({ code: '', plan: 'essentiel' });
+        loadCodes();
+        alert('✅ Code créé avec succès !');
+    } catch (e) { 
+        alert('❌ Erreur: ' + e.message); 
+        console.error('Détails:', e);
+    }
+};
 
     const handleDeleteCode = async (id) => {
         if (!confirm('Supprimer ce code ?')) return;
