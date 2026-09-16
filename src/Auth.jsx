@@ -23,6 +23,7 @@ export default function Auth() {
     const [isExtracting, setIsExtracting] = useState(false);
     const [uploadMessage, setUploadMessage] = useState('');
     const [aiAnalysis, setAiAnalysis] = useState(null);
+    const [currentStep, setCurrentStep] = useState(1);
     
     const [freeAnalysisCount, setFreeAnalysisCount] = useState(() => {
         return parseInt(localStorage.getItem('jobdiagnose_free_count') || '0');
@@ -61,7 +62,15 @@ export default function Auth() {
 
     const handleLogout = async () => {
         await account.deleteSession('current');
-        setUser(null); setEmail(''); setPassword(''); setSelectedFile(null); setCvText(''); setJobOfferText(''); setAiAnalysis(null); setUploadMessage(''); setShowPaywall(false); setActivationCode(''); setShowActivationForm(false); setActivationMessage('');
+        setUser(null);
+        resetForm();
+    };
+
+    const resetForm = () => {
+        setEmail(''); setPassword(''); setSelectedFile(null); setCvText('');
+        setJobOfferText(''); setAiAnalysis(null); setUploadMessage('');
+        setShowPaywall(false); setActivationCode(''); setShowActivationForm(false);
+        setActivationMessage(''); setCurrentStep(1);
     };
 
     const handleActivationClick = async () => {
@@ -82,14 +91,15 @@ export default function Auth() {
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, { used: true, usedBy: user.$id, usedAt: new Date().toISOString() });
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
-            setActivationMessage(`✅ Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
+            setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode(''); setShowActivationForm(false); setShowPaywall(false);
         } catch (err) { setError(err.message); } finally { setIsActivating(false); }
     };
 
     const extractTextFromPDF = async (file) => {
         try {
-            setIsExtracting(true); setUploadMessage('Extraction du texte en cours...');
+            setIsExtracting(true);
+            setUploadMessage('Extraction du texte en cours...');
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
@@ -98,9 +108,14 @@ export default function Auth() {
                 const textContent = await page.getTextContent();
                 fullText += textContent.items.map(item => item.str).join(' ') + '\n';
             }
-            setIsExtracting(false); setUploadMessage('✅ Texte extrait avec succès !');
+            setIsExtracting(false);
+            setUploadMessage('');
             return fullText.trim();
-        } catch (err) { setIsExtracting(false); setUploadMessage('❌ Erreur lors de l\'extraction.'); return ''; }
+        } catch (err) {
+            setIsExtracting(false);
+            setUploadMessage('Erreur lors de l\'extraction.');
+            return '';
+        }
     };
 
     const handleFileSelect = async (e) => {
@@ -109,8 +124,22 @@ export default function Auth() {
         setSelectedFile(file);
         if (file.type === 'application/pdf') {
             const extractedText = await extractTextFromPDF(file);
-            if (extractedText) setCvText(extractedText);
-        } else { setCvText(''); setUploadMessage('ℹ️ Pour les fichiers DOCX, veuillez copier-coller le texte manuellement.'); }
+            if (extractedText) {
+                setCvText(extractedText);
+                setCurrentStep(2);
+            }
+        } else {
+            setCvText('');
+            setUploadMessage('Pour les fichiers DOCX, veuillez copier-coller le texte manuellement.');
+        }
+    };
+
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const fakeEvent = { target: { files: [file] } };
+        await handleFileSelect(fakeEvent);
     };
 
     const analyzeWithAI = async (text) => {
@@ -129,7 +158,7 @@ export default function Auth() {
                 conseil_titre: raw.conseil_titre || "Ajoutez des réalisations chiffrées."
             };
         } catch (error) {
-            console.warn("⚠️ Erreur API, mode simulation :", error);
+            console.warn("Erreur API, mode simulation :", error);
             return { score: 65, forces: ["Expérience pertinente"], faiblesses: ["Manque de chiffres"], conseil_titre: "Ajoutez des réalisations chiffrées." };
         }
     };
@@ -149,7 +178,6 @@ export default function Auth() {
         doc.setFont('helvetica', 'bold');
         doc.text('JobDiagnose', pageWidth / 2, 25, { align: 'center' });
         doc.setFontSize(14);
-        doc.setFont('helvetica', 'normal');
         doc.text('Rapport d\'Analyse Professionnelle de CV', pageWidth / 2, 38, { align: 'center' });
         doc.setFontSize(10);
         doc.text(`Genere le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, pageWidth / 2, 50, { align: 'center' });
@@ -205,7 +233,7 @@ export default function Auth() {
         yPos += 10;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100. ${aiAnalysis.score >= 70 ? 'Il presente de solides atouts qui le rendent competitif.' : aiAnalysis.score >= 50 ? 'Il contient des elements pertinents mais necessite des ameliorations.' : 'Il necessite des retravail importants.'} Ce rapport detaille vos points forts, les axes d'amelioration et un plan d'action concret.`;
+        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100. ${aiAnalysis.score >= 70 ? 'Il presente de solides atouts.' : aiAnalysis.score >= 50 ? 'Il contient des elements pertinents mais necessite des ameliorations.' : 'Il necessite des retravail importants.'} Ce rapport detaille vos points forts, les axes d'amelioration et un plan d'action concret.`;
         const resumeLines = doc.splitTextToSize(resumeText, contentWidth);
         doc.text(resumeLines, margin, yPos);
         yPos += resumeLines.length * 5 + 10;
@@ -317,9 +345,9 @@ export default function Auth() {
         doc.setTextColor(30, 30, 30);
 
         const actions = [
-            { priority: 'PRIORITE HAUTE', color: [220, 38, 38], text: 'Corrigez immediatement les axes d\'amelioration identifies. Ce sont les points bloquants pour les recruteurs.' },
-            { priority: 'PRIORITE MOYENNE', color: [234, 179, 8], text: 'Enrichissez votre CV avec des realisations chiffrees et des mots-cles pertinents pour votre secteur.' },
-            { priority: 'PRIORITE BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme, verifiez l\'orthographe et adaptez le CV a chaque offre specifique.' }
+            { priority: 'PRIORITE HAUTE', color: [220, 38, 38], text: 'Corrigez immediatement les axes d\'amelioration identifies.' },
+            { priority: 'PRIORITE MOYENNE', color: [234, 179, 8], text: 'Enrichissez votre CV avec des realisations chiffrees.' },
+            { priority: 'PRIORITE BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme et l\'orthographe.' }
         ];
         actions.forEach((action) => {
             if (yPos > 250) { doc.addPage(); yPos = 20; }
@@ -385,183 +413,476 @@ export default function Auth() {
 
     const handleUploadCV = async (e) => {
         e.preventDefault();
-        if (!selectedFile || !cvText.trim()) { setUploadMessage('❌ Veuillez sélectionner un fichier.'); return; }
-        if (userPlan === 'free' && freeAnalysisCount >= 3) { setShowPaywall(true); setUploadMessage('🔒 3 analyses gratuites utilisées. Activez un code.'); return; }
-        setIsUploading(true); setUploadMessage(jobOfferText.trim() ? '⏳ Analyse du matching...' : '⏳ Analyse du CV en cours...'); setAiAnalysis(null);
+        if (!selectedFile || !cvText.trim()) {
+            setUploadMessage('Veuillez sélectionner un fichier.');
+            return;
+        }
+        if (userPlan === 'free' && freeAnalysisCount >= 3) {
+            setShowPaywall(true);
+            setUploadMessage('3 analyses gratuites utilisées. Activez un code.');
+            return;
+        }
+
+        setIsUploading(true);
+        setUploadMessage('');
+        setAiAnalysis(null);
+        setCurrentStep(3);
+
         try {
             const fileResponse = await storage.createFile(BUCKET_ID, ID.unique(), selectedFile);
             const analysis = await analyzeWithAI(cvText);
-            await databases.createDocument(DB_ID, COLLECTIONS.CVS, ID.unique(), { userId: user.$id, fileId: fileResponse.$id, fileName: fileResponse.name, extractedData: JSON.stringify(analysis), score: analysis.score, isValidated: true }, [Permission.read(Role.user(user.$id)), Permission.update(Role.user(user.$id)), Permission.delete(Role.user(user.$id))]);
+            await databases.createDocument(DB_ID, COLLECTIONS.CVS, ID.unique(), {
+                userId: user.$id, fileId: fileResponse.$id, fileName: fileResponse.name,
+                extractedData: JSON.stringify(analysis), score: analysis.score, isValidated: true
+            }, [Permission.read(Role.user(user.$id)), Permission.update(Role.user(user.$id)), Permission.delete(Role.user(user.$id))]);
+
             setAiAnalysis(analysis);
-            setUploadMessage(`✅ Succès ! "${fileResponse.name}" analysé.`);
-            if (userPlan === 'free') { const newCount = freeAnalysisCount + 1; setFreeAnalysisCount(newCount); localStorage.setItem('jobdiagnose_free_count', newCount.toString()); }
-            setSelectedFile(null);
-            const cvInput = document.getElementById('cv-input');
-            if (cvInput) cvInput.value = '';
-        } catch (err) { setUploadMessage(`❌ Erreur : ${err.message}`); } finally { setIsUploading(false); }
+            if (userPlan === 'free') {
+                const newCount = freeAnalysisCount + 1;
+                setFreeAnalysisCount(newCount);
+                localStorage.setItem('jobdiagnose_free_count', newCount.toString());
+            }
+        } catch (err) {
+            setUploadMessage(`Erreur : ${err.message}`);
+            setCurrentStep(2);
+        } finally {
+            setIsUploading(false);
+        }
     };
 
-    if (user) {
+    // ═══════════════════════════════════════════════════════
+    // PAGE DE CONNEXION / INSCRIPTION (Design Premium)
+    // ═══════════════════════════════════════════════════════
+    if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex gap-2 flex-wrap">
-    <Link to="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200">← Accueil</Link>
-    <Link to="/dashboard" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">📊 Mon Dashboard</Link>
-    <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">Déconnexion</button>
-</div>
-
-                    <div className="text-center mb-10">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg mb-4">
-                            <span className="text-4xl">💼</span>
-                        </div>
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                            Bienvenue, <span className="text-blue-600">{user.name}</span> !
-                        </h1>
-                        <p className="text-gray-600 text-lg">Optimisez votre candidature avec l'intelligence artificielle</p>
-                        <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white shadow-md">
-                            <span className="text-xl">{userPlan === 'premium' ? '👑' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
-                            <span className={userPlan === 'premium' ? 'text-orange-600' : (userPlan === 'essentiel' ? 'text-blue-600' : 'text-gray-600')}>Plan {userPlan.toUpperCase()}</span>
-                            {userPlan !== 'free' && <span className="text-green-600 text-xs ml-2">✓ Actif</span>}
-                        </div>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center py-12 px-4">
+                <div className="w-full max-w-md">
+                    <div className="text-center mb-8">
+                        <Link to="/" className="inline-flex items-center gap-2 mb-6">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <span className="text-white font-bold">JD</span>
+                            </div>
+                            <span className="text-2xl font-bold text-gray-900">JobDiagnose</span>
+                        </Link>
+                        <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{isLogin ? 'Bon retour parmi nous' : 'Créez votre compte'}</h2>
+                        <p className="text-gray-500 mt-2">{isLogin ? 'Connectez-vous pour analyser votre CV' : 'Commencez gratuitement en 30 secondes'}</p>
                     </div>
 
-                    {userPlan === 'free' && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="flex items-center gap-3 text-left">
-                                    <span className="text-3xl">🔑</span>
-                                    <div>
-                                        <p className="font-bold text-gray-900">Vous avez un code d'activation ?</p>
-                                        <p className="text-sm text-gray-600">Entrez votre code reçu après paiement pour débloquer les fonctionnalités premium.</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setShowActivationForm(!showActivationForm)} className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md whitespace-nowrap">
-                                    {showActivationForm ? '✕ Fermer' : '🔑 Activer un code'}
-                                </button>
+                    <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100">
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
+                                {error}
                             </div>
-                            {showActivationForm && (
-                                <div className="mt-4 pt-4 border-t border-blue-200">
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <input type="text" value={activationCode} onChange={(e) => setActivationCode(e.target.value.toUpperCase())} placeholder="JD-ESS-XXXX ou JD-PREM-XXXX" className="flex-1 px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-600 font-mono uppercase" />
-                                        <button type="button" onClick={handleActivationClick} disabled={isActivating} className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md cursor-pointer disabled:opacity-50">
-                                            {isActivating ? '⏳ Activation...' : '✅ Activer'}
-                                        </button>
-                                    </div>
-                                    {error && <p className="mt-3 text-red-700 font-medium text-center">{error}</p>}
-                                    {activationMessage && <p className="mt-3 text-green-700 font-medium text-center">{activationMessage}</p>}
+                        )}
+                        <form onSubmit={handleAuth} className="space-y-4">
+                            {!isLogin && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Nom complet</label>
+                                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Jean Dupont" />
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
-                        <form onSubmit={handleUploadCV} className="space-y-6">
                             <div>
-                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                                    <span className="text-xl">📄</span>
-                                    <span>1. Uploadez votre CV (PDF)</span>
-                                </label>
-                                <div className="relative">
-                                    <input id="cv-input" type="file" accept=".pdf,.docx" onChange={handleFileSelect} disabled={isUploading || isExtracting} className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer hover:border-blue-500 transition-colors focus:outline-none focus:border-blue-600 disabled:opacity-50" />
-                                    {isExtracting && <div className="absolute right-4 top-1/2 transform -translate-y-1/2"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}
-                                </div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="vous@exemple.com" />
                             </div>
                             <div>
-                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                                    <span className="text-xl">📋</span>
-                                    <span>2. Texte extrait</span>
-                                </label>
-                                <textarea value={cvText} onChange={(e) => setCvText(e.target.value)} disabled={isUploading} className="w-full h-40 px-4 py-3 border rounded-xl resize-none" />
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="••••••••" />
                             </div>
-                            <div>
-                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                                    <span className="text-xl">🎯</span>
-                                    <span>3. Texte de l'offre d'emploi</span>
-                                    <span className="text-blue-600 font-normal text-xs">(Optionnel)</span>
-                                </label>
-                                <textarea value={jobOfferText} onChange={(e) => setJobOfferText(e.target.value)} disabled={isUploading} placeholder="Copiez-collez la description du poste..." className="w-full h-32 px-4 py-3 border border-blue-200 rounded-xl bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-colors disabled:opacity-50" />
-                            </div>
-                            <button type="submit" disabled={isUploading || isExtracting || !selectedFile || !cvText.trim()} className="w-full py-4 px-6 rounded-xl font-bold text-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300">
-                                {isUploading ? 'Analyse en cours...' : (jobOfferText.trim() ? '🎯 Analyser le Matching' : '🚀 Diagnostiquer mon CV')}
+                            <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
+                                {isLogin ? 'Se connecter' : "Créer mon compte"}
                             </button>
                         </form>
-
-                        {showPaywall && userPlan === 'free' && (
-                            <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-6 shadow-lg">
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Analyses gratuites épuisées !</h3>
-                                <p className="text-gray-700 mb-4">Activez un code ou choisissez une offre :</p>
-                                <div className="flex flex-col sm:flex-row gap-3">
-                                    <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="flex-1 py-3 px-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all">🔑 J'ai un code</button>
-                                    <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold text-center hover:bg-blue-700 transition-all">💰 Voir les offres</a>
-                                </div>
-                            </div>
-                        )}
-
-                        {uploadMessage && !showPaywall && (
-                            <div className={`mt-6 p-4 rounded-xl text-center font-medium ${uploadMessage.includes('Succès') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {uploadMessage}
-                            </div>
-                        )}
+                        <div className="mt-6 text-center">
+                            <button onClick={() => setIsLogin(!isLogin)} className="text-sm text-gray-600 hover:text-blue-600 transition-colors">
+                                {isLogin ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
+                            </button>
+                        </div>
                     </div>
 
-                    {aiAnalysis && (
-                        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-                            <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">
-                                {jobOfferText.trim() ? '🎯 Résultat du Matching' : '📊 Résultat du Diagnostic'}
-                            </h2>
-                            <div className="text-center mb-8">
-                                <div className="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-blue-500 text-blue-600 mb-4">
-                                    <div><div className="text-4xl font-bold">{aiAnalysis.score}</div><div className="text-sm">/100</div></div>
-                                </div>
-                            </div>
-                            <div className="bg-blue-50 border-l-4 border-blue-600 p-5 mb-6 rounded-r-xl">
-                                <p className="text-gray-700"><span className="font-bold text-blue-600">Conseil :</span> {aiAnalysis.conseil_titre}</p>
-                            </div>
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                                    <h3 className="text-lg font-bold text-green-800 mb-4">✨ Points Forts</h3>
-                                    <ul className="space-y-3">{aiAnalysis.forces.map((f, i) => <li key={i} className="text-green-900">✓ {f}</li>)}</ul>
-                                </div>
-                                <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
-                                    <h3 className="text-lg font-bold text-orange-800 mb-4">⚡ Axes d'Amélioration</h3>
-                                    <ul className="space-y-3">{aiAnalysis.faiblesses.map((f, i) => <li key={i} className="text-orange-900">→ {f}</li>)}</ul>
-                                </div>
-                            </div>
-                            <div className="text-center mt-8">
-                                <button onClick={exportToPDF} className="px-8 py-4 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all">📄 Télécharger mon rapport PDF</button>
-                            </div>
-                        </div>
-                    )}
+                    <div className="text-center mt-6">
+                        <Link to="/" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">← Retour à l'accueil</Link>
+                    </div>
                 </div>
             </div>
         );
     }
 
+    // ═══════════════════════════════════════════════════════
+    // PAGE PRINCIPALE (UX Premium avec Stepper)
+    // ═══════════════════════════════════════════════════════
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4">
-            <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-2xl p-10 border border-gray-100">
-                <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900">{isLogin ? 'Connexion' : 'Inscription'}</h2>
-                </div>
-                {error && <div className="bg-red-100 text-red-700 px-4 py-3 rounded-xl">{error}</div>}
-                <form onSubmit={handleAuth} className="mt-8 space-y-6">
-                    {!isLogin && <input name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-3 border rounded-xl" placeholder="Nom complet" />}
-                    <input name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 border rounded-xl" placeholder="Email" />
-                    <input name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 border rounded-xl" placeholder="Mot de passe" />
-                    <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
-                        {isLogin ? 'Se connecter' : "S'inscrire"}
-                    </button>
-                </form>
-                <div className="text-center space-y-2">
-                    <button onClick={() => setIsLogin(!isLogin)} className="text-blue-600 font-semibold underline">
-                        {isLogin ? "S'inscrire" : "Se connecter"}
-                    </button>
-                    <div>
-                        <Link to="/" className="text-gray-600 font-semibold hover:underline">← Retour à l'accueil</Link>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+            {/* Header Premium */}
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-100">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                                <span className="text-white font-bold text-sm">JD</span>
+                            </div>
+                            <span className="text-lg font-bold text-gray-900">JobDiagnose</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Link to="/dashboard" className="hidden sm:inline-flex px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
+                                Mon espace
+                            </Link>
+                            <Link to="/" className="hidden sm:inline-flex px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium transition-colors">
+                                Accueil
+                            </Link>
+                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                                <span className="text-xs">{userPlan === 'premium' ? '👑' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
+                                <span className="text-xs font-semibold text-gray-700 capitalize">{userPlan}</span>
+                            </div>
+                            <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 hover:text-red-600 font-medium transition-colors">
+                                Déconnexion
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </header>
+
+            <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                {/* Welcome */}
+                <div className="mb-10">
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+                        Bonjour {user.name.split(' ')[0]} 👋
+                    </h1>
+                    <p className="text-gray-500 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
+                </div>
+
+                {/* Stepper Premium */}
+                <div className="mb-10">
+                    <div className="flex items-center justify-between">
+                        {[
+                            { n: 1, label: 'Upload', desc: 'CV & offre' },
+                            { n: 2, label: 'Analyse', desc: 'Vérification' },
+                            { n: 3, label: 'Résultats', desc: 'Diagnostic' }
+                        ].map((step, i) => (
+                            <div key={step.n} className="flex items-center flex-1">
+                                <div className="flex flex-col items-center flex-1">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
+                                        currentStep > step.n ? 'bg-green-500 text-white' :
+                                        currentStep === step.n ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
+                                        'bg-gray-100 text-gray-400'
+                                    }`}>
+                                        {currentStep > step.n ? (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                        ) : step.n}
+                                    </div>
+                                    <div className="mt-2 text-center hidden sm:block">
+                                        <div className={`text-sm font-semibold ${currentStep >= step.n ? 'text-gray-900' : 'text-gray-400'}`}>{step.label}</div>
+                                        <div className="text-xs text-gray-400">{step.desc}</div>
+                                    </div>
+                                </div>
+                                {i < 2 && (
+                                    <div className={`h-0.5 flex-1 mx-2 sm:mx-4 transition-all ${currentStep > step.n ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Activation Code Banner */}
+                {userPlan === 'free' && !showPaywall && (
+                    <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-gray-900 text-sm">Vous avez un code d'activation ?</p>
+                                    <p className="text-xs text-gray-600">Débloquez les fonctionnalités premium</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowActivationForm(!showActivationForm)} className="px-4 py-2 bg-white text-blue-600 border border-blue-200 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors whitespace-nowrap">
+                                {showActivationForm ? 'Fermer' : 'Activer un code'}
+                            </button>
+                        </div>
+                        {showActivationForm && (
+                            <div className="mt-4 pt-4 border-t border-blue-200">
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <input type="text" value={activationCode} onChange={(e) => setActivationCode(e.target.value.toUpperCase())} placeholder="JD-ESS-XXXX" className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
+                                    <button type="button" onClick={handleActivationClick} disabled={isActivating} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                                        {isActivating ? '...' : 'Activer'}
+                                    </button>
+                                </div>
+                                {error && <p className="mt-2 text-red-600 text-sm">{error}</p>}
+                                {activationMessage && <p className="mt-2 text-green-600 text-sm">{activationMessage}</p>}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ═══════════════════════════════════════════════════════
+                    STEP 1 & 2 : UPLOAD & ANALYSE
+                ═══════════════════════════════════════════════════════ */}
+                {(currentStep === 1 || currentStep === 2) && (
+                    <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+                        <div className="p-6 sm:p-8 border-b border-gray-100">
+                            <h2 className="text-xl font-bold text-gray-900">
+                                {currentStep === 1 ? 'Déposez votre CV' : 'Vérifiez et lancez l\'analyse'}
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {currentStep === 1 ? 'Formats acceptés : PDF, DOCX' : 'Modifiez le texte si nécessaire avant l\'analyse'}
+                            </p>
+                        </div>
+
+                        <div className="p-6 sm:p-8 space-y-6">
+                            {/* Zone de Drop Premium */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                    Votre CV
+                                </label>
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={handleDrop}
+                                    className="relative group"
+                                >
+                                    <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                            </div>
+                                            {selectedFile ? (
+                                                <div className="text-center">
+                                                    <p className="text-sm font-semibold text-gray-900">{selectedFile.name}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                                                    <p className="text-xs text-green-600 mt-2 font-medium">Fichier chargé</p>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center">
+                                                    <p className="text-sm font-semibold text-gray-900">Cliquez pour uploader ou glissez-déposez</p>
+                                                    <p className="text-xs text-gray-500 mt-1">PDF ou DOCX (max 5MB)</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <input id="cv-input" type="file" accept=".pdf,.docx" onChange={handleFileSelect} disabled={isUploading || isExtracting} className="hidden" />
+                                    </label>
+                                    {isExtracting && (
+                                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                            <div className="flex items-center gap-3">
+                                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                                                <span className="text-sm font-medium text-gray-700">Extraction du texte...</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Texte extrait */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Texte extrait
+                                    <span className="ml-2 text-xs font-normal text-gray-400">modifiable</span>
+                                </label>
+                                <textarea
+                                    value={cvText}
+                                    onChange={(e) => setCvText(e.target.value)}
+                                    disabled={isUploading}
+                                    placeholder="Le texte de votre CV apparaîtra ici après l'upload..."
+                                    className="w-full h-32 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                                />
+                            </div>
+
+                            {/* Offre d'emploi */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Offre d'emploi
+                                    <span className="ml-2 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-md">Optionnel</span>
+                                </label>
+                                <textarea
+                                    value={jobOfferText}
+                                    onChange={(e) => setJobOfferText(e.target.value)}
+                                    disabled={isUploading}
+                                    placeholder="Collez la description du poste pour une analyse de matching..."
+                                    className="w-full h-28 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                                />
+                            </div>
+
+                            {/* Erreur upload */}
+                            {uploadMessage && !showPaywall && (
+                                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                                    {uploadMessage}
+                                </div>
+                            )}
+
+                            {/* Paywall */}
+                            {showPaywall && userPlan === 'free' && (
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-2">Analyses gratuites épuisées</h3>
+                                    <p className="text-sm text-gray-700 mb-4">Vous avez utilisé vos 3 analyses gratuites. Passez au niveau supérieur.</p>
+                                    <div className="grid sm:grid-cols-2 gap-3">
+                                        <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm">
+                                            J'ai un code
+                                        </button>
+                                        <a href="https://comeup.com/fr/pay/JDlXGkTRPbYG" target="_blank" rel="noopener noreferrer" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm">
+                                            Voir les offres
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Bouton d'action */}
+                            <button
+                                onClick={handleUploadCV}
+                                disabled={isUploading || isExtracting || !selectedFile || !cvText.trim() || showPaywall}
+                                className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 disabled:shadow-none flex items-center justify-center gap-2"
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                        <span>Analyse en cours...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>{jobOfferText.trim() ? 'Analyser le matching' : 'Lancer l\'analyse'}</span>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════════════════════════════════════════════
+                    STEP 3 : RÉSULTATS (Dashboard Premium)
+                ═══════════════════════════════════════════════════════ */}
+                {currentStep === 3 && aiAnalysis && (
+                    <div className="space-y-6 animate-in fade-in duration-500">
+                        {/* Score Card Principal */}
+                        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-blue-500/30 text-white relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32"></div>
+                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24"></div>
+                            
+                            <div className="relative">
+                                <div className="flex flex-col sm:flex-row items-center gap-8">
+                                    {/* Score circulaire */}
+                                    <div className="relative">
+                                        <svg className="w-40 h-40 -rotate-90">
+                                            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.2)" strokeWidth="12" fill="none" />
+                                            <circle
+                                                cx="80" cy="80" r="70"
+                                                stroke="white"
+                                                strokeWidth="12"
+                                                fill="none"
+                                                strokeDasharray={`${(aiAnalysis.score / 100) * 440} 440`}
+                                                strokeLinecap="round"
+                                                className="transition-all duration-1000"
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <div className="text-5xl font-bold">{aiAnalysis.score}</div>
+                                            <div className="text-sm text-blue-100">/100</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Infos */}
+                                    <div className="flex-1 text-center sm:text-left">
+                                        <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-semibold mb-3">
+                                            {aiAnalysis.score >= 70 ? 'EXCELLENT' : aiAnalysis.score >= 50 ? 'BON' : 'À AMÉLIORER'}
+                                        </div>
+                                        <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+                                            {aiAnalysis.score >= 70 ? 'Votre CV est très compétitif' : aiAnalysis.score >= 50 ? 'Bon point de départ' : 'Des améliorations nécessaires'}
+                                        </h2>
+                                        <p className="text-blue-100 text-sm sm:text-base">
+                                            {aiAnalysis.conseil_titre}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-white/20">
+                                    <button onClick={exportToPDF} className="flex-1 py-3 px-5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        Télécharger le rapport PDF
+                                    </button>
+                                    <button onClick={() => { setAiAnalysis(null); setCurrentStep(1); setSelectedFile(null); setCvText(''); setJobOfferText(''); }} className="flex-1 py-3 px-5 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/20 transition-colors border border-white/20">
+                                        Nouvelle analyse
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Grid Forces / Faiblesses */}
+                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Points forts */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900">Points forts</h3>
+                                    </div>
+                                </div>
+                                <div className="p-5 space-y-3">
+                                    {aiAnalysis.forces.map((f, i) => (
+                                        <div key={i} className="flex gap-3 p-3 bg-green-50/50 rounded-xl">
+                                            <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
+                                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                            </div>
+                                            <p className="text-sm text-gray-700 leading-relaxed">{f}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Axes d'amélioration */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-amber-50">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900">Axes d'amélioration</h3>
+                                    </div>
+                                </div>
+                                <div className="p-5 space-y-3">
+                                    {aiAnalysis.faiblesses.map((f, i) => (
+                                        <div key={i} className="flex gap-3 p-3 bg-orange-50/50 rounded-xl">
+                                            <div className="flex-shrink-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center mt-0.5">
+                                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            </div>
+                                            <p className="text-sm text-gray-700 leading-relaxed">{f}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Conseil clé */}
+                        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-6">
+                            <div className="flex gap-4">
+                                <div className="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 mb-1">Conseil clé</h3>
+                                    <p className="text-sm text-gray-700 leading-relaxed">{aiAnalysis.conseil_titre}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading state */}
+                {currentStep === 3 && !aiAnalysis && isUploading && (
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-12 text-center">
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full mb-6 animate-pulse">
+                            <svg className="w-10 h-10 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Analyse en cours...</h3>
+                        <p className="text-gray-500 text-sm">Notre IA examine votre CV selon 50+ critères</p>
+                        <div className="mt-6 max-w-xs mx-auto">
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 }
