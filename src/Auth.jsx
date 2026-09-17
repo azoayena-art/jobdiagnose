@@ -1,3 +1,4 @@
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { account, ID, databases, storage, DB_ID, COLLECTIONS, BUCKET_ID } from './appwrite';
@@ -24,7 +25,7 @@ const ThemeIcon = {
 export default function Auth() {
     const [searchParams] = useSearchParams();
     const { theme, toggleTheme } = useTheme();
-    
+    const { executeRecaptcha } = useGoogleReCaptcha();
     const [authMode, setAuthMode] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -115,9 +116,26 @@ export default function Auth() {
         } catch (err) { setUser(null); }
     };
 
-    const handleAuth = async (e) => {
+        const handleAuth = async (e) => {
         e.preventDefault();
         setError(''); setMessage('');
+
+        // ✅ Vérification reCAPTCHA v3
+        if (!executeRecaptcha) { setError('Sécurité non chargée. Rechargez la page.'); return; }
+        const token = await executeRecaptcha('login_action');
+        
+        const verifyRes = await fetch('/api/verify-captcha', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ token }) 
+        });
+        const verifyData = await verifyRes.json();
+        
+        if (!verifyData.success || verifyData.score < 0.5) {
+            setError('Activité suspecte détectée. Veuillez réessayer.');
+            return;
+        }
+
         try {
             if (authMode === 'login') {
                 await account.createEmailPasswordSession(email, password);
@@ -699,15 +717,32 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
         doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
-    const handleUploadCV = async (e) => {
+        const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
         
         if (analysisCount >= planQuota) { 
             setShowPaywall(true); 
-            setUploadMessage(`Quota atteint : vous avez utilisé vos ${planQuota} analyse(s) ${userPlan === 'free' || userPlan === 'découverte' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code pour continuer.`); 
+            setUploadMessage(`Quota atteint...`); 
             return; 
         }
+
+        // ✅ Vérification reCAPTCHA v3 avant l'analyse IA
+        if (!executeRecaptcha) { setUploadMessage('Sécurité non chargée.'); return; }
+        const token = await executeRecaptcha('upload_action');
+        const verifyRes = await fetch('/api/verify-captcha', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ token }) 
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success || verifyData.score < 0.5) {
+            setUploadMessage('Activité suspecte détectée. Veuillez réessayer.');
+            return;
+        }
+
+        setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
+        // ... (le reste de la fonction reste identique)
 
         setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
         try {
