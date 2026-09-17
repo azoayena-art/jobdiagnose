@@ -170,8 +170,8 @@ export default function Landing() {
                         Propulsé par l'Intelligence Artificielle
                     </div>
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white tracking-tight mb-6">
-                        Transformez votre CV en <span className="text-blue-600 dark:text-blue-400">machine à entretiens</span>
-                    </h1>
+    Analyse de CV par IA : Obtenez un <span className="text-blue-600 dark:text-blue-400">score précis</span> et des conseils en 30s
+</h1>
                     <p className="text-xl text-gray-600 dark:text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
                         Obtenez un score précis, des conseils personnalisés et un rapport PDF professionnel en 30 secondes. 
                         Nos algorithmes analysent votre CV comme le ferait un recruteur expert.
@@ -213,7 +213,7 @@ export default function Landing() {
             <section id="comment-ca-marche" className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-950">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Comment ça marche ?</h2>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Comment optimiser votre CV avec notre IA ?</h2>
                         <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">3 étapes simples pour optimiser votre candidature.</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
@@ -239,7 +239,7 @@ export default function Landing() {
             <section id="avantages" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-gray-900">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Pourquoi choisir JobDiagnose ?</h2>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Pourquoi utiliser un logiciel d'analyse de CV IA ?</h2>
                         <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">L'outil indispensable pour les candidats ambitieux.</p>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

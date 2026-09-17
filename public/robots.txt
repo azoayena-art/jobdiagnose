@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://jobdiagnose.vercel.app/sitemap.xml
+
+Sitemap: https://app.coachemploipro.com/sitemap.xml
