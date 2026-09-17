@@ -121,7 +121,6 @@ export default function Auth() {
         e.preventDefault();
         setError(''); setMessage('');
 
-        // ✅ Vérification reCAPTCHA v3
         if (!executeRecaptcha) { setError('Sécurité non chargée. Rechargez la page.'); return; }
         const token = await executeRecaptcha('login_action');
         
@@ -227,8 +226,6 @@ export default function Auth() {
                 if (userPlanDoc && userPlanDoc.analyses) {
                     const newQuota = parseInt(userPlanDoc.analyses, 10);
                     setPlanQuota(newQuota);
-                    
-                    // ✅ Réinitialisation du compteur à 0 pour le nouveau plan (pas de cumul)
                     setAnalysisCount(0);
                     localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, '0');
                     console.log(`✅ Compteur réinitialisé à 0 | Nouveau quota: ${newQuota} analyses pour le plan ${planType}`);
@@ -309,62 +306,36 @@ export default function Auth() {
             let prompt = '';
             
             if (hasOffer) {
-                prompt = `Tu es un expert en recrutement et en analyse de candidatures. Tu dois évaluer le MATCHING entre un CV et une offre d'emploi.
+                prompt = `Tu es un expert en recrutement. Évalue le MATCHING entre ce CV et cette offre.
 
-CV DU CANDIDAT :
+CV :
 """
 ${text.substring(0, 3000)}
 """
 
-OFFRE D'EMPLOI :
+OFFRE :
 """
 ${jobOfferText.substring(0, 3000)}
 """
 
-Évalue le score de matching sur 100 en analysant ces 5 critères (20 points chacun) :
-1. COMPÉTENCES TECHNIQUES (20 pts)
-2. EXPÉRIENCE (20 pts)
-3. FORMATION (20 pts)
-4. MOTS-CLÉS (20 pts)
-5. RESPONSABILITÉS (20 pts)
+Si le CV ou l'offre est illisible/incompréhensible, réponds EXACTEMENT :
+{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Le texte n'est pas analysable"], "conseil_titre": "Revoir le format"}
 
-RÈGLES DE SCORING STRICTES :
-- Si le CV correspond parfaitement à l'offre : score entre 80 et 95
-- Si le CV correspond bien mais avec quelques écarts : score entre 60 et 79
-- Si le CV correspond partiellement : score entre 40 et 59
-- Si le CV ne correspond pas du tout à l'offre : score entre 10 et 39
-
-Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans texte avant ou après) :
-{
-  "score": 72,
-  "matching_summary": "Une phrase expliquant le niveau de compatibilité global",
-  "forces": ["3 points forts du matching", "point 2", "point 3"],
-  "faiblesses": ["3 écarts précis avec l'offre", "point 2", "point 3"],
-  "conseil_titre": "Un conseil très précis pour améliorer le matching"
-}`;
+Sinon, évalue le matching sur 100 (5 critères de 20 pts) et réponds en JSON :
+{"score": 72, "matching_summary": "...", "forces": ["...", "...", "..."], "faiblesses": ["...", "...", "..."], "conseil_titre": "..."}`;
             } else {
-                prompt = `Tu es un expert en recrutement. Analyse ce CV de manière générale.
+                prompt = `Tu es un expert en recrutement. Analyse ce CV.
 
-CV DU CANDIDAT :
+CV :
 """
 ${text.substring(0, 3000)}
 """
 
-Évalue la qualité globale du CV sur 100.
-RÈGLES DE SCORING :
-- CV excellent : 75-90
-- CV correct : 55-74
-- CV à retravailler : 35-54
-- CV très faible : 10-34
+Si le CV est illisible/incompréhensible, réponds EXACTEMENT :
+{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Le texte n'est pas analysable"], "conseil_titre": "Revoir le format"}
 
-Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
-{
-  "score": 65,
-  "matching_summary": "Une phrase sur la qualité générale",
-  "forces": ["3 points forts", "point 2", "point 3"],
-  "faiblesses": ["3 axes d'amélioration", "point 2", "point 3"],
-  "conseil_titre": "Un conseil précis"
-}`;
+Sinon, évalue la qualité sur 100 et réponds en JSON :
+{"score": 65, "matching_summary": "...", "forces": ["...", "...", "..."], "faiblesses": ["...", "...", "..."], "conseil_titre": "..."}`;
             }
             
             const response = await fetch('/api/gemini', { 
@@ -392,39 +363,45 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                         console.log('✅ JSON parsé avec succès:', raw);
                     } else {
                         console.warn('⚠️ Aucun objet JSON trouvé dans la réponse');
+                        raw = null;
                     }
                 } catch (e) {
                     console.error('❌ Erreur parsing JSON:', e);
-                    console.error('Contenu brut:', raw);
+                    raw = null;
                 }
             }
 
-            // ✅ Score par défaut à 0 (pas 65) pour détecter les échecs
+            // ✅ Détection d'échec : si raw est null ou si l'IA a renvoyé score 0
+            if (!raw || raw.score === 0) {
+                console.warn('⚠️ Analyse échouée - Score forcé à 0');
+                return { 
+                    score: 0, 
+                    matching_summary: "Format illisible",
+                    forces: [], 
+                    faiblesses: ["Le texte extrait n'est pas assez clair pour être analysé."], 
+                    conseil_titre: "Revoir le format" 
+                };
+            }
+
+            // ✅ Extraction du score
             let finalScore = 0;
-            if (raw && typeof raw === 'object') {
-                console.log(' Objet raw reçu:', raw);
-                
-                if (raw.score !== undefined && raw.score !== null) {
-                    const parsedScore = parseInt(raw.score, 10);
-                    if (!isNaN(parsedScore) && parsedScore >= 10 && parsedScore <= 95) {
-                        finalScore = parsedScore;
-                        console.log('✅ Score extrait:', finalScore);
-                    } else {
-                        console.warn('⚠️ Score invalide:', raw.score);
-                    }
+            if (raw.score !== undefined && raw.score !== null) {
+                const parsedScore = parseInt(raw.score, 10);
+                if (!isNaN(parsedScore) && parsedScore >= 10 && parsedScore <= 95) {
+                    finalScore = parsedScore;
+                    console.log('✅ Score extrait:', finalScore);
                 } else {
-                    console.warn('⚠️ Propriété score absente dans raw');
+                    console.warn('⚠️ Score invalide:', raw.score);
+                    finalScore = 0;
                 }
-            } else {
-                console.error('❌ raw n\'est pas un objet:', raw);
             }
 
             return {
                 score: finalScore,
-                matching_summary: raw?.matching_summary || "Format illisible",
-                forces: Array.isArray(raw?.forces) && raw.forces.length > 0 ? raw.forces : [],
-                faiblesses: Array.isArray(raw?.faiblesses) && raw.faiblesses.length > 0 ? raw.faiblesses : ["Le texte extrait n'est pas assez clair pour être analysé."],
-                conseil_titre: raw?.conseil_titre || "Revoir le format"
+                matching_summary: raw.matching_summary || "Format illisible",
+                forces: Array.isArray(raw.forces) && raw.forces.length > 0 ? raw.forces : [],
+                faiblesses: Array.isArray(raw.faiblesses) && raw.faiblesses.length > 0 ? raw.faiblesses : ["Le texte extrait n'est pas assez clair pour être analysé."],
+                conseil_titre: raw.conseil_titre || "Revoir le format"
             };
         } catch (error) {
             console.error('❌ Erreur IA:', error);
@@ -728,7 +705,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             return; 
         }
 
-        // ✅ Vérification reCAPTCHA v3 avant l'analyse IA
         if (!executeRecaptcha) { setUploadMessage('Sécurité non chargée.'); return; }
         const token = await executeRecaptcha('upload_action');
         const verifyRes = await fetch('/api/verify-captcha', { 
@@ -753,10 +729,15 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             setAiAnalysis(analysis);
             
-            // ✅ Si score = 0, l'analyse a échoué : on n'incrémente PAS le compteur
-            if (analysis.score === 0) {
-                console.warn('⚠️ Analyse échouée (score 0) - Compteur non incrémenté. Message "Erreur de format. Réessayez." affiché.');
+            // ✅ Détection d'échec : score 0 OU forces vides OU conseil "Revoir le format"
+            const isFailedAnalysis = analysis.score === 0 || 
+                                     analysis.forces.length === 0 || 
+                                     analysis.conseil_titre === 'Revoir le format';
+            
+            if (isFailedAnalysis) {
+                console.warn('⚠️ Analyse échouée - Compteur non incrémenté');
                 setUploadMessage('Erreur de format. Réessayez.');
+                setCurrentStep(2); // Retour à l'étape de vérification
             } else {
                 const newCount = analysisCount + 1;
                 setAnalysisCount(newCount);
@@ -949,7 +930,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                     </div>
                     {mobileMenuOpen && (
                         <div className="md:hidden py-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
-                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">📊 Mon espace</Link>
+                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium"> Mon espace</Link>
                             <Link to="/" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium"> Accueil</Link>
                             <button onClick={toggleTheme} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">
                                 {theme === 'dark' ? '️ Mode clair' : '🌙 Mode sombre'}
@@ -964,7 +945,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                 <div className="mb-10">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
-                    {/* ✅ Bouton Réinitialiser SUPPRIMÉ */}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Plan : <span className="font-semibold capitalize">{userPlan}</span> | 
                         Analyses utilisées : <span className="font-semibold">{analysisCount}/{planQuota}</span>
