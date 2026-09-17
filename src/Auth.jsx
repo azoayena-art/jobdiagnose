@@ -695,7 +695,7 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
         doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
-    const handleUploadCV = async (e) => {
+        const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
         
@@ -718,35 +718,39 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
             return;
         }
 
-        setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
+        setIsUploading(true); setUploadMessage('');
         try {
             const fileResponse = await storage.createFile(BUCKET_ID, ID.unique(), selectedFile);
             const analysis = await analyzeWithAI(cvText);
+            
+            // ✅ DÉTECTION D'ÉCHEC : score 65 + valeurs par défaut = format illisible
+            const isFailedAnalysis = analysis.score === 65 && 
+                                     analysis.forces.length > 0 && 
+                                     analysis.forces[0] === 'Expérience pertinente';
+            
+            if (isFailedAnalysis) {
+                console.warn('⚠️ Analyse échouée détectée - Compteur non incrémenté');
+                setUploadMessage('Erreur de format. Réessayez.');
+                // ✅ NE PAS passer à l'étape 3, rester à l'étape 2
+                setIsUploading(false);
+                return;
+            }
+            
+            // ✅ Analyse réussie : sauvegarder et incrémenter
             await databases.createDocument(DB_ID, COLLECTIONS.CVS, ID.unique(), {
                 userId: user.$id, fileId: fileResponse.$id, fileName: fileResponse.name,
                 extractedData: JSON.stringify(analysis), score: analysis.score, isValidated: true
             }, [Permission.read(Role.user(user.$id)), Permission.update(Role.user(user.$id)), Permission.delete(Role.user(user.$id))]);
 
             setAiAnalysis(analysis);
+            setCurrentStep(3);
             
-            // ✅ Détection d'échec : score 0 OU forces vides OU conseil "Revoir le format"
-            const isFailedAnalysis = analysis.score === 0 || 
-                                     analysis.forces.length === 0 || 
-                                     analysis.conseil_titre === 'Revoir le format';
-            
-            if (isFailedAnalysis) {
-                console.warn('⚠️ Analyse échouée - Compteur non incrémenté');
-                setUploadMessage('Erreur de format. Réessayez.');
-                setCurrentStep(2); // Retour à l'étape de vérification
-            } else {
-                const newCount = analysisCount + 1;
-                setAnalysisCount(newCount);
-                localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
-                console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée avec succès`);
-            }
+            const newCount = analysisCount + 1;
+            setAnalysisCount(newCount);
+            localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
+            console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée avec succès`);
         } catch (err) {
             setUploadMessage(`Erreur : ${err.message}`);
-            setCurrentStep(2);
         } finally { setIsUploading(false); }
     };
 
