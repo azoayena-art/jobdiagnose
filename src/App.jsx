@@ -4,6 +4,7 @@ import Auth from './Auth';
 import Admin from './Admin';
 import Dashboard from './Dashboard';
 import Legal from './Legal';
+import CookieConsent from './components/CookieConsent';
 
 function App() {
     return (
@@ -15,6 +16,8 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/legal" element={<Legal />} />
             </Routes>
+            {/* Bandeau de cookies RGPD */}
+            <CookieConsent />
         </Router>
     );
 }
