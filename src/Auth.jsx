@@ -84,7 +84,7 @@ export default function Auth() {
             try {
                 const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
                 const planName = savedPlan || 'free';
-                console.log(' Recherche du plan:', planName, '| Plans disponibles:', pricingRes.documents.map(p => ({ name: p.name, analyses: p.analyses })));
+                console.log('🔍 Recherche du plan:', planName, '| Plans disponibles:', pricingRes.documents.map(p => ({ name: p.name, analyses: p.analyses })));
                 
                 const userPlanDoc = pricingRes.documents.find(p => {
                     const docName = p.name.toLowerCase();
@@ -98,7 +98,7 @@ export default function Auth() {
                            (search === 'premium' && docName.includes('premium'));
                 });
                 
-                console.log('📄 Plan trouvé:', userPlanDoc);
+                console.log(' Plan trouvé:', userPlanDoc);
                 
                 if (userPlanDoc && userPlanDoc.analyses !== undefined) {
                     const quota = parseInt(userPlanDoc.analyses, 10);
@@ -109,7 +109,7 @@ export default function Auth() {
                     setPlanQuota(3);
                 }
             } catch (e) {
-                console.warn(' Impossible de charger le quota pricing:', e);
+                console.warn('❌ Impossible de charger le quota pricing:', e);
                 setPlanQuota(3);
             }
         } catch (err) { setUser(null); }
@@ -196,7 +196,7 @@ export default function Auth() {
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, { used: true, usedBy: user.$id, usedAt: new Date().toISOString() });
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
-                        setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
+            setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode(''); setShowActivationForm(false); setShowPaywall(false);
             
             try {
@@ -380,7 +380,8 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                 }
             }
 
-            let finalScore = 65;
+            // ✅ Score par défaut à 0 (pas 65) pour détecter les échecs
+            let finalScore = 0;
             if (raw && typeof raw === 'object') {
                 console.log('🎯 Objet raw reçu:', raw);
                 
@@ -401,19 +402,19 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             return {
                 score: finalScore,
-                matching_summary: raw?.matching_summary || (hasOffer ? "Analyse de matching avec l'offre" : "Analyse générale du CV"),
-                forces: Array.isArray(raw?.forces) && raw.forces.length > 0 ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
-                faiblesses: Array.isArray(raw?.faiblesses) && raw.faiblesses.length > 0 ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
-                conseil_titre: raw?.conseil_titre || "Ajoutez des réalisations chiffrées et des mots-clés pertinents."
+                matching_summary: raw?.matching_summary || "Format illisible",
+                forces: Array.isArray(raw?.forces) && raw.forces.length > 0 ? raw.forces : [],
+                faiblesses: Array.isArray(raw?.faiblesses) && raw.faiblesses.length > 0 ? raw.faiblesses : ["Le texte extrait n'est pas assez clair pour être analysé."],
+                conseil_titre: raw?.conseil_titre || "Revoir le format"
             };
         } catch (error) {
             console.error('❌ Erreur IA:', error);
             return { 
-                score: 65, 
-                matching_summary: "Analyse non disponible",
-                forces: ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"], 
-                faiblesses: ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"], 
-                conseil_titre: "Ajoutez des réalisations chiffrées et des mots-clés pertinents." 
+                score: 0, 
+                matching_summary: "Format illisible",
+                forces: [], 
+                faiblesses: ["Le texte extrait n'est pas assez clair pour être analysé."], 
+                conseil_titre: "Revoir le format" 
             };
         }
     };
@@ -719,15 +720,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             setAiAnalysis(analysis);
             
-            // ✅ Détection d'échec élargie : score 65 + forces/faiblesses par défaut = analyse incomplète
-            const isFailedAnalysis = analysis.score === 65 && 
-                                     (analysis.forces[0] === 'Expérience pertinente' || 
-                                      analysis.faiblesses[0] === 'Manque de chiffres');
-            
-            if (isFailedAnalysis) {
-                console.warn('⚠️ Analyse incomplète (score par défaut 65 + valeurs par défaut) - Compteur non incrémenté');
-                setUploadMessage('⚠️ L\'analyse n\'a pas pu être traitée correctement. Veuillez réessayer avec un autre CV ou copier-coller le texte manuellement.');
-                setCurrentStep(2);
+            // ✅ Si score = 0, l'analyse a échoué : on n'incrémente PAS le compteur
+            if (analysis.score === 0) {
+                console.warn('️ Analyse échouée (score 0) - Compteur non incrémenté. Message "Revoir le format" affiché.');
             } else {
                 const newCount = analysisCount + 1;
                 setAnalysisCount(newCount);
@@ -960,7 +955,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                     </div>
                 </div>
 
-                {/* ✅ Formulaire d'activation TOUJOURS visible (même après quota atteint) */}
                 {!showPaywall && (
                     <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1080,20 +1074,22 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                                     </div>
                                     <div className="flex-1 text-center sm:text-left">
                                         <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-semibold mb-3">
-                                            {aiAnalysis.score >= 70 ? 'EXCELLENT' : aiAnalysis.score >= 50 ? 'BON' : 'À AMÉLIORER'}
+                                            {aiAnalysis.score === 0 ? 'FORMAT INVALIDE' : aiAnalysis.score >= 70 ? 'EXCELLENT' : aiAnalysis.score >= 50 ? 'BON' : 'À AMÉLIORER'}
                                         </div>
                                         <h2 className="text-2xl sm:text-3xl font-bold mb-2">
-                                            {aiAnalysis.score >= 70 ? 'Votre CV est très compétitif' : aiAnalysis.score >= 50 ? 'Bon point de départ' : 'Des améliorations nécessaires'}
+                                            {aiAnalysis.score === 0 ? 'Format non analysable' : aiAnalysis.score >= 70 ? 'Votre CV est très compétitif' : aiAnalysis.score >= 50 ? 'Bon point de départ' : 'Des améliorations nécessaires'}
                                         </h2>
                                         <p className="text-blue-100 text-sm sm:text-base mb-2">{aiAnalysis.matching_summary}</p>
                                         <p className="text-white/80 text-xs sm:text-sm italic">{aiAnalysis.conseil_titre}</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-white/20">
-                                    <button onClick={exportToPDF} className="flex-1 py-3 px-5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        Télécharger le rapport PDF
-                                    </button>
+                                    {aiAnalysis.score > 0 && (
+                                        <button onClick={exportToPDF} className="flex-1 py-3 px-5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            Télécharger le rapport PDF
+                                        </button>
+                                    )}
                                     <button onClick={() => { setAiAnalysis(null); setCurrentStep(1); setSelectedFile(null); setCvText(''); setJobOfferText(''); }} className="flex-1 py-3 px-5 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/20 transition-colors border border-white/20">
                                         Nouvelle analyse
                                     </button>
@@ -1101,60 +1097,90 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                             </div>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                                <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                        {aiAnalysis.score > 0 && (
+                            <>
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                                        <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Points forts</h3>
+                                            </div>
                                         </div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Points forts</h3>
+                                        <div className="p-5 space-y-3">
+                                            {aiAnalysis.forces.length > 0 ? aiAnalysis.forces.map((f, i) => (
+                                                <div key={i} className="flex gap-3 p-3 bg-green-50/50 dark:bg-green-900/10 rounded-xl">
+                                                    <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
+                                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{f}</p>
+                                                </div>
+                                            )) : (
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">Aucun point fort identifié.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                                        <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Axes d'amélioration</h3>
+                                            </div>
+                                        </div>
+                                        <div className="p-5 space-y-3">
+                                            {aiAnalysis.faiblesses.map((f, i) => (
+                                                <div key={i} className="flex gap-3 p-3 bg-orange-50/50 dark:bg-orange-900/10 rounded-xl">
+                                                    <div className="flex-shrink-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center mt-0.5">
+                                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{f}</p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="p-5 space-y-3">
-                                    {aiAnalysis.forces.map((f, i) => (
-                                        <div key={i} className="flex gap-3 p-3 bg-green-50/50 dark:bg-green-900/10 rounded-xl">
-                                            <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-0.5">
-                                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                            </div>
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{f}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                                <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Axes d'amélioration</h3>
-                                    </div>
-                                </div>
-                                <div className="p-5 space-y-3">
-                                    {aiAnalysis.faiblesses.map((f, i) => (
-                                        <div key={i} className="flex gap-3 p-3 bg-orange-50/50 dark:bg-orange-900/10 rounded-xl">
-                                            <div className="flex-shrink-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center mt-0.5">
-                                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                            </div>
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{f}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
-                            <div className="flex gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
+                                    <div className="flex gap-4">
+                                        <div className="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 dark:text-white mb-1">Conseil clé</h3>
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{aiAnalysis.conseil_titre}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-gray-900 dark:text-white mb-1">Conseil clé</h3>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{aiAnalysis.conseil_titre}</p>
+                            </>
+                        )}
+
+                        {aiAnalysis.score === 0 && (
+                            <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
+                                <div className="flex gap-4">
+                                    <div className="flex-shrink-0 w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white mb-1">Format non analysable</h3>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
+                                            Nous n'avons pas pu analyser votre CV correctement. Cela peut être dû à :
+                                        </p>
+                                        <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
+                                            <li>Un CV au format image (scan)</li>
+                                            <li>Un PDF protégé ou corrompu</li>
+                                            <li>Un texte trop court ou illisible</li>
+                                        </ul>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-3 font-medium">
+                                            💡 Cette analyse n'a pas été comptabilisée. Vous pouvez réessayer avec un autre fichier.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
 
