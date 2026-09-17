@@ -2,14 +2,20 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { databases, DB_ID, COLLECTIONS } from './appwrite';
 import { Query } from 'appwrite';
+import { useTheme } from './hooks/useTheme';
 
 // ═══════════════════════════════════════════════════════════════
-// ICÔNES SVG (remplacement des emojis pour un rendu premium)
+// ICÔNES SVG
 // ═══════════════════════════════════════════════════════════════
 const Icon = {
-    Spark: () => (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+    Sun: () => (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+        </svg>
+    ),
+    Moon: () => (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
         </svg>
     ),
     Upload: () => (
@@ -68,7 +74,7 @@ const Icon = {
         </svg>
     ),
     Chevron: ({ open }) => (
-        <svg className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <svg className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
     ),
@@ -83,6 +89,7 @@ export default function Landing() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [pricingList, setPricingList] = useState([]);
     const [openFaq, setOpenFaq] = useState(null);
+    const { theme, toggleTheme } = useTheme();
 
     useEffect(() => { loadPricing(); }, []);
 
@@ -106,27 +113,30 @@ export default function Landing() {
     };
 
     return (
-        <div className="min-h-screen bg-white font-sans antialiased text-gray-900">
+        <div className="min-h-screen bg-white dark:bg-gray-950 font-sans antialiased text-gray-900 dark:text-gray-100 transition-colors duration-300">
             {/* ══════════════════════════════════════════════════════
                 NAVBAR
             ═══════════════════════════════════════════════════════ */}
-            <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-50">
+            <nav className="fixed top-0 w-full bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <Link to="/" className="flex items-center gap-2">
                             <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
                         </Link>
                         <div className="hidden md:flex items-center gap-8">
-                            <button onClick={() => scrollToSection('comment-ca-marche')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer text-sm font-medium">Comment ça marche</button>
-                            <button onClick={() => scrollToSection('avantages')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer text-sm font-medium">Avantages</button>
-                            <button onClick={() => scrollToSection('tarifs')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer text-sm font-medium">Tarifs</button>
-                            <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900 transition-colors cursor-pointer text-sm font-medium">FAQ</button>
+                            <button onClick={() => scrollToSection('comment-ca-marche')} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer text-sm font-medium">Comment ça marche</button>
+                            <button onClick={() => scrollToSection('avantages')} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer text-sm font-medium">Avantages</button>
+                            <button onClick={() => scrollToSection('tarifs')} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer text-sm font-medium">Tarifs</button>
+                            <button onClick={() => scrollToSection('faq')} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer text-sm font-medium">FAQ</button>
                         </div>
                         <div className="hidden md:flex items-center gap-3">
-                            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm">Mon espace</Link>
-                            <Link to="/auth" className="px-4 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors text-sm">Commencer</Link>
+                            <Link to="/dashboard" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors text-sm">Mon espace</Link>
+                            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
+                                {theme === 'dark' ? <Icon.Sun /> : <Icon.Moon />}
+                            </button>
+                            <Link to="/auth" className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors text-sm">Commencer</Link>
                         </div>
-                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             {mobileMenuOpen ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             ) : (
@@ -135,13 +145,16 @@ export default function Landing() {
                         </button>
                     </div>
                     {mobileMenuOpen && (
-                        <div className="md:hidden py-4 border-t border-gray-100 space-y-2">
-                            <button onClick={() => scrollToSection('comment-ca-marche')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">Comment ça marche</button>
-                            <button onClick={() => scrollToSection('avantages')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">Avantages</button>
-                            <button onClick={() => scrollToSection('tarifs')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">Tarifs</button>
-                            <button onClick={() => scrollToSection('faq')} className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">FAQ</button>
-                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium">Mon espace</Link>
-                            <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 bg-gray-900 text-white rounded-lg font-semibold text-center hover:bg-gray-800">Commencer gratuitement</Link>
+                        <div className="md:hidden py-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                            <button onClick={() => scrollToSection('comment-ca-marche')} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">Comment ça marche</button>
+                            <button onClick={() => scrollToSection('avantages')} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">Avantages</button>
+                            <button onClick={() => scrollToSection('tarifs')} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">Tarifs</button>
+                            <button onClick={() => scrollToSection('faq')} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">FAQ</button>
+                            <button onClick={toggleTheme} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">
+                                {theme === 'dark' ? '☀️ Mode clair' : '🌙 Mode sombre'}
+                            </button>
+                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">Mon espace</Link>
+                            <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-semibold text-center hover:bg-gray-800 dark:hover:bg-gray-100">Commencer gratuitement</Link>
                         </div>
                     )}
                 </div>
@@ -150,25 +163,25 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 HERO
             ═══════════════════════════════════════════════════════ */}
-            <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 via-white to-blue-50">
+            <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
                 <div className="max-w-4xl mx-auto text-center">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-sm font-semibold mb-6 border border-blue-100">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-semibold mb-6 border border-blue-100 dark:border-blue-800">
                         <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
                         Propulsé par l'Intelligence Artificielle
                     </div>
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight mb-6">
-                        Transformez votre CV en <span className="text-blue-600">machine à entretiens</span>
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white tracking-tight mb-6">
+                        Transformez votre CV en <span className="text-blue-600 dark:text-blue-400">machine à entretiens</span>
                     </h1>
-                    <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-xl text-gray-600 dark:text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
                         Obtenez un score précis, des conseils personnalisés et un rapport PDF professionnel en 30 secondes. 
                         Nos algorithmes analysent votre CV comme le ferait un recruteur expert.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link to="/auth" className="px-8 py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all shadow-lg text-lg inline-flex items-center justify-center">
+                        <Link to="/auth" className="px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-lg text-lg inline-flex items-center justify-center">
                             Analyser mon CV gratuitement
                             <Icon.Arrow />
                         </Link>
-                        <button onClick={() => scrollToSection('comment-ca-marche')} className="px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-lg">
+                        <button onClick={() => scrollToSection('comment-ca-marche')} className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all text-lg">
                             Voir comment ça marche
                         </button>
                     </div>
@@ -178,7 +191,7 @@ export default function Landing() {
             {/* ══════════════════════════════════════════════════════
                 STATISTIQUES
             ═══════════════════════════════════════════════════════ */}
-            <section className="py-12 bg-gray-900 text-white px-4">
+            <section className="py-12 bg-gray-900 dark:bg-black text-white px-4">
                 <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                     {[
                         { val: '1000+', label: 'CV analysés' },
@@ -197,11 +210,11 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 COMMENT ÇA MARCHE
             ═══════════════════════════════════════════════════════ */}
-            <section id="comment-ca-marche" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+            <section id="comment-ca-marche" className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-950">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Comment ça marche ?</h2>
-                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">3 étapes simples pour optimiser votre candidature.</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Comment ça marche ?</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">3 étapes simples pour optimiser votre candidature.</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
                         {[
@@ -209,11 +222,11 @@ export default function Landing() {
                             { n: '02', icon: <Icon.AI />, title: 'L\'IA analyse', desc: 'Notre intelligence artificielle évalue votre CV selon 50+ critères de recrutement.' },
                             { n: '03', icon: <Icon.Document />, title: 'Recevez votre rapport', desc: 'Téléchargez votre rapport PDF complet avec score, forces, faiblesses et plan d\'action.' }
                         ].map((step, i) => (
-                            <div key={i} className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-xl hover:border-blue-100 transition-all group">
-                                <div className="absolute top-4 right-4 text-6xl font-bold text-gray-100 group-hover:text-blue-50 transition-colors">{step.n}</div>
-                                <div className="text-blue-600 mb-6">{step.icon}</div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                                <p className="text-gray-600 leading-relaxed">{step.desc}</p>
+                            <div key={i} className="relative p-8 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900 transition-all group">
+                                <div className="absolute top-4 right-4 text-6xl font-bold text-gray-100 dark:text-gray-800 group-hover:text-blue-50 dark:group-hover:text-blue-950 transition-colors">{step.n}</div>
+                                <div className="text-blue-600 dark:text-blue-400 mb-6">{step.icon}</div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{step.title}</h3>
+                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{step.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -223,11 +236,11 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 AVANTAGES
             ═══════════════════════════════════════════════════════ */}
-            <section id="avantages" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50">
+            <section id="avantages" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-gray-900">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Pourquoi choisir JobDiagnose ?</h2>
-                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">L'outil indispensable pour les candidats ambitieux.</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Pourquoi choisir JobDiagnose ?</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">L'outil indispensable pour les candidats ambitieux.</p>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[
@@ -238,10 +251,10 @@ export default function Landing() {
                             { icon: <Icon.Chart />, title: 'Score de matching', desc: 'Mesurez votre compatibilité avec une offre d\'emploi spécifique.' },
                             { icon: <Icon.Rocket />, title: 'Résultats immédiats', desc: 'Obtenez votre rapport détaillé en moins de 30 secondes.' }
                         ].map((adv, i) => (
-                            <div key={i} className="p-6 bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-lg transition-all">
-                                <div className="text-blue-600 mb-4">{adv.icon}</div>
-                                <h3 className="text-lg font-bold text-gray-900 mb-2">{adv.title}</h3>
-                                <p className="text-gray-600 text-sm leading-relaxed">{adv.desc}</p>
+                            <div key={i} className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all">
+                                <div className="text-blue-600 dark:text-blue-400 mb-4">{adv.icon}</div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{adv.title}</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{adv.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -251,11 +264,11 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 TÉMOIGNAGES
             ═══════════════════════════════════════════════════════ */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-950">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Ils ont décroché leur entretien</h2>
-                        <p className="text-xl text-gray-600">Rejoignez des milliers de candidats qui ont boosté leur carrière.</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Ils ont décroché leur entretien</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400">Rejoignez des milliers de candidats qui ont boosté leur carrière.</p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
                         {[
@@ -263,18 +276,18 @@ export default function Landing() {
                             { name: 'Thomas L.', role: 'Chef de Projet', text: 'Le rapport PDF est incroyablement détaillé. Les conseils sur les mots-clés ATS ont tout changé pour moi.' },
                             { name: 'Amina K.', role: 'Data Analyst', text: 'L\'analyse de matching avec l\'offre d\'emploi est une pépite. J\'ai adapté mon CV et j\'ai été embauchée.' }
                         ].map((t, i) => (
-                            <div key={i} className="p-8 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col">
+                            <div key={i} className="p-8 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col">
                                 <div className="flex gap-1 mb-4">
                                     {[...Array(5)].map((_, j) => <Icon.Star key={j} />)}
                                 </div>
-                                <p className="text-gray-700 italic mb-6 flex-1">"{t.text}"</p>
-                                <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+                                <p className="text-gray-700 dark:text-gray-300 italic mb-6 flex-1">"{t.text}"</p>
+                                <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                                         {t.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="font-bold text-gray-900 text-sm">{t.name}</div>
-                                        <div className="text-xs text-gray-500">{t.role}</div>
+                                        <div className="font-bold text-gray-900 dark:text-white text-sm">{t.name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">{t.role}</div>
                                     </div>
                                 </div>
                             </div>
@@ -286,17 +299,17 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 TARIFS
             ══════════════════════════════════════════════════════ */}
-            <section id="tarifs" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+            <section id="tarifs" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Des tarifs simples et transparents</h2>
-                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">Commencez gratuitement, passez au niveau supérieur quand vous êtes prêt.</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Des tarifs simples et transparents</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Commencez gratuitement, passez au niveau supérieur quand vous êtes prêt.</p>
                     </div>
                     
                     {pricingList.length === 0 ? (
                         <div className="text-center py-12">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                            <p className="text-gray-600">Chargement des tarifs...</p>
+                            <p className="text-gray-600 dark:text-gray-400">Chargement des tarifs...</p>
                         </div>
                     ) : (
                         <div className="grid md:grid-cols-3 gap-8">
@@ -308,34 +321,34 @@ export default function Landing() {
                                 }
 
                                 return (
-                                    <div key={plan.$id} className={`relative bg-white rounded-2xl p-8 border ${plan.popular ? 'border-blue-500 shadow-xl shadow-blue-500/10' : 'border-gray-200'} flex flex-col`}>
+                                    <div key={plan.$id} className={`relative bg-white dark:bg-gray-800 rounded-2xl p-8 border ${plan.popular ? 'border-blue-500 shadow-xl shadow-blue-500/10' : 'border-gray-200 dark:border-gray-700'} flex flex-col`}>
                                         {plan.popular && (
                                             <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full uppercase tracking-wide">
                                                 Le plus populaire
                                             </div>
                                         )}
                                         <div className="mb-6">
-                                            <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                                            <p className="text-gray-600 text-sm">{plan.description}</p>
+                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
+                                            <p className="text-gray-600 dark:text-gray-400 text-sm">{plan.description}</p>
                                         </div>
                                         <div className="mb-6">
-                                            <span className="text-4xl font-bold text-gray-900">{plan.price}€</span>
-                                            <span className="text-gray-500 text-sm"> / analyse</span>
+                                            <span className="text-4xl font-bold text-gray-900 dark:text-white">{plan.price}€</span>
+                                            <span className="text-gray-500 dark:text-gray-400 text-sm"> / analyse</span>
                                         </div>
                                         <ul className="space-y-3 mb-8 flex-1">
                                             {plan.features.map((feature, i) => (
-                                                <li key={i} className="flex items-start gap-3 text-gray-700 text-sm">
+                                                <li key={i} className="flex items-start gap-3 text-gray-700 dark:text-gray-300 text-sm">
                                                     <Icon.Check />
                                                     <span>{feature}</span>
                                                 </li>
                                             ))}
                                         </ul>
                                         {isFree ? (
-                                            <Link to="/auth" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all block ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+                                            <Link to="/auth" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all block ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'}`}>
                                                 Commencer gratuitement
                                             </Link>
                                         ) : (
-                                            <a href={comeUpLink} target="_blank" rel="noopener noreferrer" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all block ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+                                            <a href={comeUpLink} target="_blank" rel="noopener noreferrer" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all block ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'}`}>
                                                 Choisir ce plan
                                             </a>
                                         )}
@@ -350,11 +363,11 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 FAQ ACCORDÉON
             ═══════════════════════════════════════════════════════ */}
-            <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+            <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-950">
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Questions fréquentes</h2>
-                        <p className="text-xl text-gray-600">Tout ce que vous devez savoir sur JobDiagnose.</p>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Questions fréquentes</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400">Tout ce que vous devez savoir sur JobDiagnose.</p>
                     </div>
                     <div className="space-y-3">
                         {[
@@ -366,16 +379,16 @@ export default function Landing() {
                         ].map((item, i) => {
                             const isOpen = openFaq === i;
                             return (
-                                <div key={i} className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors">
+                                <div key={i} className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:border-gray-300 dark:hover:border-gray-700 transition-colors bg-white dark:bg-gray-900">
                                     <button
                                         onClick={() => toggleFaq(i)}
-                                        className="w-full flex items-center justify-between p-6 text-left bg-white hover:bg-gray-50 transition-colors"
+                                        className="w-full flex items-center justify-between p-6 text-left bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                     >
-                                        <span className="font-semibold text-gray-900 pr-4">{item.q}</span>
+                                        <span className="font-semibold text-gray-900 dark:text-white pr-4">{item.q}</span>
                                         <Icon.Chevron open={isOpen} />
                                     </button>
                                     <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96' : 'max-h-0'}`}>
-                                        <div className="px-6 pb-6 text-gray-600 leading-relaxed border-t border-gray-100 pt-4">
+                                        <div className="px-6 pb-6 text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-4">
                                             {item.a}
                                         </div>
                                     </div>
@@ -389,10 +402,10 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 CTA FINAL
             ═══════════════════════════════════════════════════════ */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 to-blue-900 text-white">
+            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 to-blue-900 dark:from-black dark:to-gray-900 text-white">
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="text-3xl sm:text-4xl font-bold mb-6">Prêt à décrocher votre prochain entretien ?</h2>
-                    <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
+                    <p className="text-xl text-gray-300 dark:text-gray-400 mb-10 max-w-2xl mx-auto">
                         Ne laissez plus un CV mal optimisé vous fermer des portes. Obtenez votre diagnostic professionnel dès maintenant.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -409,7 +422,7 @@ export default function Landing() {
             {/* ═══════════════════════════════════════════════════════
                 FOOTER
             ═══════════════════════════════════════════════════════ */}
-            <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
+            <footer className="bg-gray-900 dark:bg-black text-gray-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
                 <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8">
                     <div className="col-span-2">
                         <div className="flex items-center gap-2 mb-4">

@@ -4,13 +4,9 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // ✅ Active le mode sombre via la classe "dark"
   theme: {
-    extend: {
-      colors: {
-        primary: '#2563eb',
-        secondary: '#10b981',
-      }
-    },
+    extend: {},
   },
   plugins: [],
 }
