@@ -186,12 +186,37 @@ export default function Auth() {
     const handleFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        
+        const fileName = file.name.toLowerCase();
+        const fileType = file.type;
+        
+        const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf');
+        const isDOCX = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileName.endsWith('.docx');
+        const isDOC = fileType === 'application/msword' || fileName.endsWith('.doc');
+        
+        if (!isPDF && !isDOCX && !isDOC) {
+            setSelectedFile(null);
+            setCvText('');
+            setUploadMessage(`❌ Format non supporté : ${file.name}. Veuillez utiliser un fichier PDF ou DOCX.`);
+            return;
+        }
+        
         setSelectedFile(file);
-        if (file.type === 'application/pdf') {
+        setUploadMessage('');
+        
+        if (isPDF) {
             const extractedText = await extractTextFromPDF(file);
-            if (extractedText) { setCvText(extractedText); setCurrentStep(2); }
-        } else {
-            setCvText(''); setUploadMessage('Pour les fichiers DOCX, veuillez copier-coller le texte manuellement.');
+            if (extractedText && extractedText.length > 50) {
+                setCvText(extractedText);
+                setCurrentStep(2);
+                setUploadMessage('✅ Texte extrait avec succès. Vérifiez et lancez l\'analyse.');
+            } else {
+                setCvText('');
+                setUploadMessage(`⚠️ Impossible d'extraire le texte de ce PDF. Le fichier est peut-être scanné ou protégé. Essayez un autre PDF ou copiez-collez le texte manuellement.`);
+            }
+        } else if (isDOCX || isDOC) {
+            setCvText('');
+            setUploadMessage(`⚠️ Format DOC/DOCX détecté : l'extraction automatique n'est pas disponible. Veuillez ouvrir votre fichier Word, copier tout le texte (Ctrl+A puis Ctrl+C), et le coller dans la zone "Texte extrait" ci-dessous.`);
         }
     };
 
@@ -202,7 +227,7 @@ export default function Auth() {
         await handleFileSelect({ target: { files: [file] } });
     };
 
-        const analyzeWithAI = async (text) => {
+    const analyzeWithAI = async (text) => {
         try {
             const hasOffer = jobOfferText.trim().length > 50;
             
@@ -274,38 +299,57 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             });
             
             const data = await response.json();
+            
+            console.log('📥 Réponse brute de l\'API:', data);
+            
             if (data.error) throw new Error(data.error);
             
             let raw = data.result;
             
-            // 🛠️ CORRECTION : Nettoyage et parsing robuste du JSON
+            console.log('🔍 Type de raw:', typeof raw, '| Valeur:', raw);
+            
+            // Nettoyage robuste
             if (typeof raw === 'string') {
                 try {
-                    // Enlève les balises markdown ```json ... ``` si l'IA en met
-                    const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const cleanJson = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
                     const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         raw = JSON.parse(jsonMatch[0]);
+                        console.log('✅ JSON parsé avec succès:', raw);
+                    } else {
+                        console.warn('⚠️ Aucun objet JSON trouvé dans la réponse');
                     }
                 } catch (e) {
-                    console.warn("Parsing JSON string échoué.", e);
+                    console.error('❌ Erreur parsing JSON:', e);
+                    console.error('Contenu brut:', raw);
                 }
             }
 
-            // ️ CORRECTION : Extraction sécurisée du score (gère "75" ou 75)
+            // Extraction sécurisée du score
             let finalScore = 65;
-            if (raw && raw.score !== undefined) {
-                const parsedScore = parseInt(raw.score, 10);
-                if (!isNaN(parsedScore)) {
-                    finalScore = Math.max(10, Math.min(95, parsedScore));
+            if (raw && typeof raw === 'object') {
+                console.log('🎯 Objet raw reçu:', raw);
+                
+                if (raw.score !== undefined && raw.score !== null) {
+                    const parsedScore = parseInt(raw.score, 10);
+                    if (!isNaN(parsedScore) && parsedScore >= 10 && parsedScore <= 95) {
+                        finalScore = parsedScore;
+                        console.log('✅ Score extrait:', finalScore);
+                    } else {
+                        console.warn('⚠️ Score invalide:', raw.score);
+                    }
+                } else {
+                    console.warn('⚠️ Propriété score absente dans raw');
                 }
+            } else {
+                console.error('❌ raw n\'est pas un objet:', raw);
             }
 
             return {
                 score: finalScore,
                 matching_summary: raw?.matching_summary || (hasOffer ? "Analyse de matching avec l'offre" : "Analyse générale du CV"),
-                forces: Array.isArray(raw?.forces) ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
-                faiblesses: Array.isArray(raw?.faiblesses) ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
+                forces: Array.isArray(raw?.forces) && raw.forces.length > 0 ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
+                faiblesses: Array.isArray(raw?.faiblesses) && raw.faiblesses.length > 0 ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
                 conseil_titre: raw?.conseil_titre || "Ajoutez des réalisations chiffrées et des mots-clés pertinents."
             };
         } catch (error) {
