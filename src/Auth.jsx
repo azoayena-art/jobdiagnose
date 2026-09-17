@@ -196,7 +196,7 @@ export default function Auth() {
             await databases.updateDocument(DB_ID, COLLECTIONS.CODES, codeData.$id, { used: true, usedBy: user.$id, usedAt: new Date().toISOString() });
             localStorage.setItem(`jobdiagnose_plan_${user.$id}`, planType);
             setUserPlan(planType);
-            setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
+                        setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode(''); setShowActivationForm(false); setShowPaywall(false);
             
             try {
@@ -206,7 +206,13 @@ export default function Auth() {
                     p.name.toLowerCase().includes(planType)
                 );
                 if (userPlanDoc && userPlanDoc.analyses) {
-                    setPlanQuota(parseInt(userPlanDoc.analyses, 10));
+                    const newQuota = parseInt(userPlanDoc.analyses, 10);
+                    setPlanQuota(newQuota);
+                    
+                    // ✅ Réinitialisation du compteur à 0 pour le nouveau plan (pas de cumul)
+                    setAnalysisCount(0);
+                    localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, '0');
+                    console.log(`✅ Compteur réinitialisé à 0 | Nouveau quota: ${newQuota} analyses pour le plan ${planType}`);
                 }
             } catch (e) {
                 console.warn('Erreur rechargement quota:', e);
