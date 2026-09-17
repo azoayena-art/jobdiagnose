@@ -1,4 +1,3 @@
-import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { account, ID, databases, storage, DB_ID, COLLECTIONS, BUCKET_ID } from './appwrite';
@@ -6,6 +5,7 @@ import { Query, Permission, Role } from 'appwrite';
 import * as pdfjsLib from 'pdfjs-dist';
 import jsPDF from 'jspdf';
 import { useTheme } from './hooks/useTheme';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
@@ -26,6 +26,7 @@ export default function Auth() {
     const [searchParams] = useSearchParams();
     const { theme, toggleTheme } = useTheme();
     const { executeRecaptcha } = useGoogleReCaptcha();
+    
     const [authMode, setAuthMode] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -99,14 +100,14 @@ export default function Auth() {
                            (search === 'premium' && docName.includes('premium'));
                 });
                 
-                console.log(' Plan trouvé:', userPlanDoc);
+                console.log('📄 Plan trouvé:', userPlanDoc);
                 
                 if (userPlanDoc && userPlanDoc.analyses !== undefined) {
                     const quota = parseInt(userPlanDoc.analyses, 10);
                     setPlanQuota(quota);
                     console.log(`✅ Quota chargé depuis Appwrite: ${quota} analyses pour le plan ${planName}`);
                 } else {
-                    console.warn(`⚠️ Plan "${planName}" non trouvé ou champ analyses manquant, quota par défaut: 3`);
+                    console.warn(`️ Plan "${planName}" non trouvé ou champ analyses manquant, quota par défaut: 3`);
                     setPlanQuota(3);
                 }
             } catch (e) {
@@ -116,7 +117,7 @@ export default function Auth() {
         } catch (err) { setUser(null); }
     };
 
-        const handleAuth = async (e) => {
+    const handleAuth = async (e) => {
         e.preventDefault();
         setError(''); setMessage('');
 
@@ -401,7 +402,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             // ✅ Score par défaut à 0 (pas 65) pour détecter les échecs
             let finalScore = 0;
             if (raw && typeof raw === 'object') {
-                console.log('🎯 Objet raw reçu:', raw);
+                console.log(' Objet raw reçu:', raw);
                 
                 if (raw.score !== undefined && raw.score !== null) {
                     const parsedScore = parseInt(raw.score, 10);
@@ -409,10 +410,10 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                         finalScore = parsedScore;
                         console.log('✅ Score extrait:', finalScore);
                     } else {
-                        console.warn('️ Score invalide:', raw.score);
+                        console.warn('⚠️ Score invalide:', raw.score);
                     }
                 } else {
-                    console.warn('️ Propriété score absente dans raw');
+                    console.warn('⚠️ Propriété score absente dans raw');
                 }
             } else {
                 console.error('❌ raw n\'est pas un objet:', raw);
@@ -717,13 +718,13 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
         doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
-        const handleUploadCV = async (e) => {
+    const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
         
         if (analysisCount >= planQuota) { 
             setShowPaywall(true); 
-            setUploadMessage(`Quota atteint...`); 
+            setUploadMessage(`Quota atteint : vous avez utilisé vos ${planQuota} analyse(s) ${userPlan === 'free' || userPlan === 'découverte' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code pour continuer.`); 
             return; 
         }
 
@@ -742,9 +743,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
         }
 
         setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
-        // ... (le reste de la fonction reste identique)
-
-        setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
         try {
             const fileResponse = await storage.createFile(BUCKET_ID, ID.unique(), selectedFile);
             const analysis = await analyzeWithAI(cvText);
@@ -757,7 +755,8 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             
             // ✅ Si score = 0, l'analyse a échoué : on n'incrémente PAS le compteur
             if (analysis.score === 0) {
-                console.warn('️ Analyse échouée (score 0) - Compteur non incrémenté. Message "Revoir le format" affiché.');
+                console.warn('⚠️ Analyse échouée (score 0) - Compteur non incrémenté. Message "Erreur de format. Réessayez." affiché.');
+                setUploadMessage('Erreur de format. Réessayez.');
             } else {
                 const newCount = analysisCount + 1;
                 setAnalysisCount(newCount);
@@ -817,13 +816,14 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                                 <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
                                     Se connecter
                                 </button>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
+                                    Ce site est protégé par reCAPTCHA. Les 
+                                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Conditions d'utilisation</a> et la 
+                                    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Politique de confidentialité</a> de Google s'appliquent.
+                                </p>
                             </form>
                         )}
-<p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
-    Ce site est protégé par reCAPTCHA. Les 
-    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Conditions d'utilisation</a> et la 
-    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Politique de confidentialité</a> de Google s'appliquent.
-</p>
+
                         {authMode === 'register' && (
                             <form onSubmit={handleAuth} className="space-y-4">
                                 <div>
@@ -846,6 +846,11 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                                 <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
                                     Créer mon compte
                                 </button>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
+                                    Ce site est protégé par reCAPTCHA. Les 
+                                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Conditions d'utilisation</a> et la 
+                                    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Politique de confidentialité</a> de Google s'appliquent.
+                                </p>
                             </form>
                         )}
 
@@ -959,19 +964,10 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                 <div className="mb-10">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
+                    {/* ✅ Bouton Réinitialiser SUPPRIMÉ */}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Plan : <span className="font-semibold capitalize">{userPlan}</span> | 
                         Analyses utilisées : <span className="font-semibold">{analysisCount}/{planQuota}</span>
-                        <button 
-                            onClick={() => {
-                                localStorage.removeItem(`jobdiagnose_analysis_count_${user.$id}`);
-                                setAnalysisCount(0);
-                                alert('Compteur réinitialisé à 0');
-                            }}
-                            className="ml-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                            (Réinitialiser)
-                        </button>
                     </p>
                 </div>
 
