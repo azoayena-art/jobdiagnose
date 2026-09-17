@@ -819,7 +819,11 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                                 </button>
                             </form>
                         )}
-
+<p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
+    Ce site est protégé par reCAPTCHA. Les 
+    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Conditions d'utilisation</a> et la 
+    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Politique de confidentialité</a> de Google s'appliquent.
+</p>
                         {authMode === 'register' && (
                             <form onSubmit={handleAuth} className="space-y-4">
                                 <div>
