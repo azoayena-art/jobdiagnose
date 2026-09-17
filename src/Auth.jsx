@@ -202,7 +202,7 @@ export default function Auth() {
         await handleFileSelect({ target: { files: [file] } });
     };
 
-    const analyzeWithAI = async (text) => {
+        const analyzeWithAI = async (text) => {
         try {
             const hasOffer = jobOfferText.trim().length > 50;
             
@@ -222,61 +222,50 @@ ${jobOfferText.substring(0, 3000)}
 """
 
 Évalue le score de matching sur 100 en analysant ces 5 critères (20 points chacun) :
-
-1. COMPÉTENCES TECHNIQUES (20 pts) : Le CV contient-il les compétences techniques demandées dans l'offre ?
-2. EXPÉRIENCE (20 pts) : L'expérience du candidat correspond-elle aux années et au niveau requis ?
-3. FORMATION (20 pts) : Le niveau de formation correspond-il aux exigences ?
-4. MOTS-CLÉS (20 pts) : Les mots-clés de l'offre apparaissent-ils dans le CV ?
-5. RESPONSABILITÉS (20 pts) : Les missions décrites dans l'offre correspondent-elles à l'expérience du candidat ?
+1. COMPÉTENCES TECHNIQUES (20 pts)
+2. EXPÉRIENCE (20 pts)
+3. FORMATION (20 pts)
+4. MOTS-CLÉS (20 pts)
+5. RESPONSABILITÉS (20 pts)
 
 RÈGLES DE SCORING STRICTES :
 - Si le CV correspond parfaitement à l'offre : score entre 80 et 95
 - Si le CV correspond bien mais avec quelques écarts : score entre 60 et 79
 - Si le CV correspond partiellement : score entre 40 et 59
 - Si le CV ne correspond pas du tout à l'offre : score entre 10 et 39
-- Ne donne JAMAIS un score supérieur à 95
-- Ne donne JAMAIS un score inférieur à 10
 
-Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après, sans markdown) :
+Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans texte avant ou après) :
 {
   "score": 72,
   "matching_summary": "Une phrase expliquant le niveau de compatibilité global",
-  "forces": ["3 points forts du matching spécifiques à cette offre", "point 2", "point 3"],
-  "faiblesses": ["3 écarts précis entre le CV et cette offre", "point 2", "point 3"],
-  "conseil_titre": "Un conseil très précis pour améliorer le matching AVEC CETTE OFFRE"
+  "forces": ["3 points forts du matching", "point 2", "point 3"],
+  "faiblesses": ["3 écarts précis avec l'offre", "point 2", "point 3"],
+  "conseil_titre": "Un conseil très précis pour améliorer le matching"
 }`;
             } else {
-                prompt = `Tu es un expert en recrutement. Analyse ce CV de manière générale (sans offre spécifique).
+                prompt = `Tu es un expert en recrutement. Analyse ce CV de manière générale.
 
 CV DU CANDIDAT :
 """
 ${text.substring(0, 3000)}
 """
 
-Évalue la qualité globale du CV sur 100 selon ces critères :
-- Structure et clarté (20 pts)
-- Verbes d'action et réalisations chiffrées (20 pts)
-- Compétences techniques bien présentées (20 pts)
-- Mise en forme professionnelle (20 pts)
-- Absence de fautes et concision (20 pts)
-
+Évalue la qualité globale du CV sur 100.
 RÈGLES DE SCORING :
-- CV excellent et professionnel : 75-90
-- CV correct mais perfectible : 55-74
+- CV excellent : 75-90
+- CV correct : 55-74
 - CV à retravailler : 35-54
 - CV très faible : 10-34
 
-Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
+Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 {
   "score": 65,
-  "matching_summary": "Une phrase sur la qualité générale du CV",
-  "forces": ["3 points forts du CV", "point 2", "point 3"],
+  "matching_summary": "Une phrase sur la qualité générale",
+  "forces": ["3 points forts", "point 2", "point 3"],
   "faiblesses": ["3 axes d'amélioration", "point 2", "point 3"],
-  "conseil_titre": "Un conseil précis pour améliorer ce CV"
+  "conseil_titre": "Un conseil précis"
 }`;
             }
-            
-            console.log('📤 Envoi du prompt à l\'IA...', hasOffer ? '(avec offre - mode matching)' : '(sans offre - mode général)');
             
             const response = await fetch('/api/gemini', { 
                 method: 'POST', 
@@ -285,19 +274,39 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans texte avant ou après) :
             });
             
             const data = await response.json();
-            
             if (data.error) throw new Error(data.error);
             
-            const raw = data.result;
+            let raw = data.result;
             
-            console.log('📥 Réponse IA reçue:', raw);
-            
+            // 🛠️ CORRECTION : Nettoyage et parsing robuste du JSON
+            if (typeof raw === 'string') {
+                try {
+                    // Enlève les balises markdown ```json ... ``` si l'IA en met
+                    const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        raw = JSON.parse(jsonMatch[0]);
+                    }
+                } catch (e) {
+                    console.warn("Parsing JSON string échoué.", e);
+                }
+            }
+
+            // ️ CORRECTION : Extraction sécurisée du score (gère "75" ou 75)
+            let finalScore = 65;
+            if (raw && raw.score !== undefined) {
+                const parsedScore = parseInt(raw.score, 10);
+                if (!isNaN(parsedScore)) {
+                    finalScore = Math.max(10, Math.min(95, parsedScore));
+                }
+            }
+
             return {
-                score: typeof raw.score === 'number' ? Math.max(10, Math.min(95, raw.score)) : 65,
-                matching_summary: raw.matching_summary || (hasOffer ? "Analyse de matching avec l'offre" : "Analyse générale du CV"),
-                forces: Array.isArray(raw.forces) ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
-                faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
-                conseil_titre: raw.conseil_titre || "Ajoutez des réalisations chiffrées et des mots-clés pertinents."
+                score: finalScore,
+                matching_summary: raw?.matching_summary || (hasOffer ? "Analyse de matching avec l'offre" : "Analyse générale du CV"),
+                forces: Array.isArray(raw?.forces) ? raw.forces : ["Expérience pertinente", "Bonnes compétences techniques", "Formation adaptée"],
+                faiblesses: Array.isArray(raw?.faiblesses) ? raw.faiblesses : ["Manque de chiffres", "Structure à améliorer", "Mots-clés manquants"],
+                conseil_titre: raw?.conseil_titre || "Ajoutez des réalisations chiffrées et des mots-clés pertinents."
             };
         } catch (error) {
             console.error('❌ Erreur IA:', error);
