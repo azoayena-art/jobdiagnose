@@ -86,7 +86,6 @@ export default function Auth() {
             try {
                 const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
                 const planName = savedPlan || 'free';
-                console.log('🔍 Recherche du plan:', planName, '| Plans disponibles:', pricingRes.documents.map(p => ({ name: p.name, analyses: p.analyses })));
                 
                 const userPlanDoc = pricingRes.documents.find(p => {
                     const docName = p.name.toLowerCase();
@@ -100,18 +99,13 @@ export default function Auth() {
                            (search === 'premium' && docName.includes('premium'));
                 });
                 
-                console.log('📄 Plan trouvé:', userPlanDoc);
-                
                 if (userPlanDoc && userPlanDoc.analyses !== undefined) {
                     const quota = parseInt(userPlanDoc.analyses, 10);
                     setPlanQuota(quota);
-                    console.log(`✅ Quota chargé depuis Appwrite: ${quota} analyses pour le plan ${planName}`);
                 } else {
-                    console.warn(`️ Plan "${planName}" non trouvé ou champ analyses manquant, quota par défaut: 3`);
                     setPlanQuota(3);
                 }
             } catch (e) {
-                console.warn('❌ Impossible de charger le quota pricing:', e);
                 setPlanQuota(3);
             }
         } catch (err) { setUser(null); }
@@ -153,7 +147,7 @@ export default function Auth() {
         try {
             const redirectUrl = window.location.origin + '/auth';
             await account.createRecovery(recoveryEmail, redirectUrl);
-            setMessage('Un e-mail de réinitialisation a été envoyé. Vérifiez votre boîte de réception (et vos spams).');
+            setMessage('Un e-mail de réinitialisation a été envoyé.');
         } catch (err) { setError(err.message); }
     };
 
@@ -169,13 +163,13 @@ export default function Auth() {
             const secret = searchParams.get('secret');
             
             if (!userId || !secret) {
-                setError('Lien de réinitialisation invalide. Veuillez redemander un nouveau lien.');
+                setError('Lien invalide.');
                 setAuthMode('forgot');
                 return;
             }
             
             await account.updateRecovery(userId, secret, newPassword, confirmPassword);
-            setMessage('Mot de passe réinitialisé avec succès ! Vous pouvez maintenant vous connecter.');
+            setMessage('Mot de passe réinitialisé !');
             setAuthMode('login');
             setNewPassword('');
             setConfirmPassword('');
@@ -228,7 +222,6 @@ export default function Auth() {
                     setPlanQuota(newQuota);
                     setAnalysisCount(0);
                     localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, '0');
-                    console.log(`✅ Compteur réinitialisé à 0 | Nouveau quota: ${newQuota} analyses pour le plan ${planType}`);
                 }
             } catch (e) {
                 console.warn('Erreur rechargement quota:', e);
@@ -238,7 +231,7 @@ export default function Auth() {
 
     const extractTextFromPDF = async (file) => {
         try {
-            setIsExtracting(true); setUploadMessage('Extraction du texte en cours...');
+            setIsExtracting(true); setUploadMessage('Extraction du texte...');
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
@@ -250,7 +243,7 @@ export default function Auth() {
             setIsExtracting(false); setUploadMessage('');
             return fullText.trim();
         } catch (err) {
-            setIsExtracting(false); setUploadMessage('Erreur lors de l\'extraction.');
+            setIsExtracting(false); setUploadMessage('Erreur extraction.');
             return '';
         }
     };
@@ -269,7 +262,7 @@ export default function Auth() {
         if (!isPDF && !isDOCX && !isDOC) {
             setSelectedFile(null);
             setCvText('');
-            setUploadMessage(`❌ Format non supporté : ${file.name}. Veuillez utiliser un fichier PDF ou DOCX.`);
+            setUploadMessage(`❌ Format non supporté : ${file.name}.`);
             return;
         }
         
@@ -281,14 +274,14 @@ export default function Auth() {
             if (extractedText && extractedText.length > 50) {
                 setCvText(extractedText);
                 setCurrentStep(2);
-                setUploadMessage('✅ Texte extrait avec succès. Vérifiez et lancez l\'analyse.');
+                setUploadMessage('✅ Texte extrait.');
             } else {
                 setCvText('');
-                setUploadMessage(`⚠️ Impossible d'extraire le texte de ce PDF. Le fichier est peut-être scanné ou protégé. Essayez un autre PDF ou copiez-collez le texte manuellement.`);
+                setUploadMessage(`⚠️ Impossible d'extraire le texte.`);
             }
         } else if (isDOCX || isDOC) {
             setCvText('');
-            setUploadMessage(`⚠️ Format DOC/DOCX détecté : l'extraction automatique n'est pas disponible. Veuillez ouvrir votre fichier Word, copier tout le texte (Ctrl+A puis Ctrl+C), et le coller dans la zone "Texte extrait" ci-dessous.`);
+            setUploadMessage(`⚠️ Format DOC/DOCX : copiez-collez le texte manuellement.`);
         }
     };
 
@@ -306,7 +299,7 @@ export default function Auth() {
             let prompt = '';
             
             if (hasOffer) {
-                prompt = `Tu es un expert en recrutement. Évalue le MATCHING entre ce CV et cette offre.
+                prompt = `Évalue le MATCHING entre ce CV et cette offre.
 
 CV :
 """
@@ -318,23 +311,23 @@ OFFRE :
 ${jobOfferText.substring(0, 3000)}
 """
 
-Si le CV ou l'offre est illisible/incompréhensible, réponds EXACTEMENT :
-{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Le texte n'est pas analysable"], "conseil_titre": "Revoir le format"}
+Si le texte est illisible ou incompréhensible, réponds EXACTEMENT avec score 0 :
+{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Texte non analysable"], "conseil_titre": "Revoir le format"}
 
-Sinon, évalue le matching sur 100 (5 critères de 20 pts) et réponds en JSON :
+Sinon, évalue sur 100 et réponds en JSON :
 {"score": 72, "matching_summary": "...", "forces": ["...", "...", "..."], "faiblesses": ["...", "...", "..."], "conseil_titre": "..."}`;
             } else {
-                prompt = `Tu es un expert en recrutement. Analyse ce CV.
+                prompt = `Analyse ce CV.
 
 CV :
 """
 ${text.substring(0, 3000)}
 """
 
-Si le CV est illisible/incompréhensible, réponds EXACTEMENT :
-{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Le texte n'est pas analysable"], "conseil_titre": "Revoir le format"}
+Si le CV est illisible ou incompréhensible, réponds EXACTEMENT avec score 0 :
+{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Texte non analysable"], "conseil_titre": "Revoir le format"}
 
-Sinon, évalue la qualité sur 100 et réponds en JSON :
+Sinon, évalue sur 100 et réponds en JSON :
 {"score": 65, "matching_summary": "...", "forces": ["...", "...", "..."], "faiblesses": ["...", "...", "..."], "conseil_titre": "..."}`;
             }
             
@@ -346,13 +339,9 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
             
             const data = await response.json();
             
-            console.log(' Réponse brute de l\'API:', data);
-            
             if (data.error) throw new Error(data.error);
             
             let raw = data.result;
-            
-            console.log('🔍 Type de raw:', typeof raw, '| Valeur:', raw);
             
             if (typeof raw === 'string') {
                 try {
@@ -360,63 +349,76 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                     const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         raw = JSON.parse(jsonMatch[0]);
-                        console.log('✅ JSON parsé avec succès:', raw);
                     } else {
-                        console.warn('⚠️ Aucun objet JSON trouvé dans la réponse');
-                        raw = null;
+                        // ❌ Pas de JSON trouvé = échec
+                        return { 
+                            score: 0, 
+                            matching_summary: "Format illisible",
+                            forces: [], 
+                            faiblesses: ["Le texte n'est pas analysable."], 
+                            conseil_titre: "Revoir le format" 
+                        };
                     }
                 } catch (e) {
-                    console.error('❌ Erreur parsing JSON:', e);
-                    raw = null;
+                    // ❌ Erreur parsing = échec
+                    return { 
+                        score: 0, 
+                        matching_summary: "Format illisible",
+                        forces: [], 
+                        faiblesses: ["Le texte n'est pas analysable."], 
+                        conseil_titre: "Revoir le format" 
+                    };
                 }
             }
 
-            // ✅ Détection d'échec : si raw est null ou si l'IA a renvoyé score 0
-            if (!raw || raw.score === 0) {
-                console.warn('⚠️ Analyse échouée - Score forcé à 0');
-                return { 
-                    score: 0, 
-                    matching_summary: "Format illisible",
-                    forces: [], 
-                    faiblesses: ["Le texte extrait n'est pas assez clair pour être analysé."], 
-                    conseil_titre: "Revoir le format" 
+            // ✅ Si raw est un objet, extraire le score
+            if (raw && typeof raw === 'object') {
+                const parsedScore = parseInt(raw.score, 10);
+                
+                // Si score est 0 ou invalide, c'est un échec
+                if (isNaN(parsedScore) || parsedScore < 10 || parsedScore > 95) {
+                    return { 
+                        score: 0, 
+                        matching_summary: "Format illisible",
+                        forces: [], 
+                        faiblesses: ["Le texte n'est pas analysable."], 
+                        conseil_titre: "Revoir le format" 
+                    };
+                }
+                
+                // Score valide
+                return {
+                    score: parsedScore,
+                    matching_summary: raw.matching_summary || "Analyse complète",
+                    forces: Array.isArray(raw.forces) ? raw.forces : [],
+                    faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : [],
+                    conseil_titre: raw.conseil_titre || "Améliorez votre CV"
                 };
             }
-
-            // ✅ Extraction du score
-            let finalScore = 0;
-            if (raw.score !== undefined && raw.score !== null) {
-                const parsedScore = parseInt(raw.score, 10);
-                if (!isNaN(parsedScore) && parsedScore >= 10 && parsedScore <= 95) {
-                    finalScore = parsedScore;
-                    console.log('✅ Score extrait:', finalScore);
-                } else {
-                    console.warn('⚠️ Score invalide:', raw.score);
-                    finalScore = 0;
-                }
-            }
-
-            return {
-                score: finalScore,
-                matching_summary: raw.matching_summary || "Format illisible",
-                forces: Array.isArray(raw.forces) && raw.forces.length > 0 ? raw.forces : [],
-                faiblesses: Array.isArray(raw.faiblesses) && raw.faiblesses.length > 0 ? raw.faiblesses : ["Le texte extrait n'est pas assez clair pour être analysé."],
-                conseil_titre: raw.conseil_titre || "Revoir le format"
+            
+            // ❌ raw n'est pas un objet = échec
+            return { 
+                score: 0, 
+                matching_summary: "Format illisible",
+                forces: [], 
+                faiblesses: ["Le texte n'est pas analysable."], 
+                conseil_titre: "Revoir le format" 
             };
+            
         } catch (error) {
             console.error('❌ Erreur IA:', error);
             return { 
                 score: 0, 
                 matching_summary: "Format illisible",
                 forces: [], 
-                faiblesses: ["Le texte extrait n'est pas assez clair pour être analysé."], 
+                faiblesses: ["Le texte n'est pas analysable."], 
                 conseil_titre: "Revoir le format" 
             };
         }
     };
 
     const exportToPDF = () => {
-        if (!aiAnalysis || !user) return;
+        if (!aiAnalysis || !user || aiAnalysis.score === 0) return;
         
         const doc = new jsPDF();
         const pageWidth = 210;
@@ -497,11 +499,7 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
         yPos += 8;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100. ${
-            aiAnalysis.score >= 70 ? 'Il présente de solides atouts qui devraient attirer l\'attention des recruteurs.' : 
-            aiAnalysis.score >= 50 ? 'Il contient des éléments pertinents mais nécessite des améliorations pour être compétitif.' : 
-            'Il nécessite des retravail importants avant d\'être envoyé aux recruteurs.'
-        } Ce rapport détaille vos points forts, les axes d\'amélioration et un plan d\'action concret.`;
+        const resumeText = `Votre CV a obtenu un score de ${aiAnalysis.score}/100.`;
         
         const resumeLines = doc.splitTextToSize(resumeText, contentWidth);
         doc.text(resumeLines, margin, yPos);
@@ -628,9 +626,9 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
         doc.setTextColor(30, 30, 30);
 
         const actions = [
-            { priority: 'PRIORITÉ HAUTE', color: [220, 38, 38], text: 'Corrigez immédiatement les axes d\'amélioration identifiés ci-dessus.' },
-            { priority: 'PRIORITÉ MOYENNE', color: [234, 179, 8], text: 'Enrichissez votre CV avec des réalisations chiffrées et des verbes d\'action.' },
-            { priority: 'PRIORITÉ BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme et vérifiez l\'orthographe.' }
+            { priority: 'PRIORITÉ HAUTE', color: [220, 38, 38], text: 'Corrigez les axes d\'amélioration.' },
+            { priority: 'PRIORITÉ MOYENNE', color: [234, 179, 8], text: 'Enrichissez avec des réalisations chiffrées.' },
+            { priority: 'PRIORITÉ BASSE', color: [34, 197, 94], text: 'Peaufinez la mise en forme.' }
         ];
         
         actions.forEach((action) => {
@@ -650,58 +648,26 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
             yPos += actionLines.length * 4.5 + 6;
         });
 
-        yPos += 5;
-        
-        doc.setFillColor(245, 245, 250);
-        doc.roundedRect(margin, yPos, contentWidth, 9, 2, 2, 'F');
-        doc.setTextColor(30, 58, 138);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CHECKLIST FINALE', margin + 5, yPos + 6);
-        yPos += 12;
-        
-        doc.setTextColor(30, 30, 30);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        const checklist = [
-            '[ ]  CV tenu sur 1 à 2 pages maximum',
-            '[ ]  Photo professionnelle',
-            '[ ]  Titre de poste clair',
-            '[ ]  Résumé professionnel en 3-4 lignes',
-            '[ ]  Expériences avec verbes d\'action',
-            '[ ]  Compétences techniques séparées',
-            '[ ]  Formation à jour',
-            '[ ]  Aucune faute d\'orthographe',
-            '[ ]  Format PDF uniquement',
-            '[ ]  Nom du fichier professionnel'
-        ];
-        
-        checklist.forEach(item => {
-            if (yPos > 260) { doc.addPage(); yPos = 20; }
-            doc.text(item, margin + 5, yPos);
-            yPos += 6;
-        });
-
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
             doc.setFontSize(7);
             doc.setTextColor(150, 150, 150);
             doc.setFont('helvetica', 'normal');
-            doc.text(`JobDiagnose © ${new Date().getFullYear()} - Rapport confidentiel`, pageWidth / 2, 290, { align: 'center' });
+            doc.text(`JobDiagnose © ${new Date().getFullYear()}`, pageWidth / 2, 290, { align: 'center' });
             doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, 290, { align: 'right' });
         }
         
         doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
-        const handleUploadCV = async (e) => {
+    const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
         
         if (analysisCount >= planQuota) { 
             setShowPaywall(true); 
-            setUploadMessage(`Quota atteint : vous avez utilisé vos ${planQuota} analyse(s) ${userPlan === 'free' || userPlan === 'découverte' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code pour continuer.`); 
+            setUploadMessage(`Quota atteint : ${planQuota} analyse(s).`); 
             return; 
         }
 
@@ -714,43 +680,39 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
         });
         const verifyData = await verifyRes.json();
         if (!verifyData.success || verifyData.score < 0.5) {
-            setUploadMessage('Activité suspecte détectée. Veuillez réessayer.');
+            setUploadMessage('Activité suspecte.');
             return;
         }
 
-        setIsUploading(true); setUploadMessage('');
+        setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
         try {
             const fileResponse = await storage.createFile(BUCKET_ID, ID.unique(), selectedFile);
             const analysis = await analyzeWithAI(cvText);
             
-            // ✅ DÉTECTION D'ÉCHEC : score 65 + valeurs par défaut = format illisible
-            const isFailedAnalysis = analysis.score === 65 && 
-                                     analysis.forces.length > 0 && 
-                                     analysis.forces[0] === 'Expérience pertinente';
-            
-            if (isFailedAnalysis) {
-                console.warn('⚠️ Analyse échouée détectée - Compteur non incrémenté');
+            // ✅ SI SCORE = 0 : ÉCHEC - Ne pas sauvegarder, ne pas incrémenter
+            if (analysis.score === 0) {
+                console.log('⚠️ Analyse échouée - Score 0');
+                setAiAnalysis(analysis);
                 setUploadMessage('Erreur de format. Réessayez.');
-                // ✅ NE PAS passer à l'étape 3, rester à l'étape 2
-                setIsUploading(false);
-                return;
-            }
-            
-            // ✅ Analyse réussie : sauvegarder et incrémenter
-            await databases.createDocument(DB_ID, COLLECTIONS.CVS, ID.unique(), {
-                userId: user.$id, fileId: fileResponse.$id, fileName: fileResponse.name,
-                extractedData: JSON.stringify(analysis), score: analysis.score, isValidated: true
-            }, [Permission.read(Role.user(user.$id)), Permission.update(Role.user(user.$id)), Permission.delete(Role.user(user.$id))]);
+                // ❌ NE PAS sauvegarder dans Appwrite
+                // ❌ NE PAS incrémenter le compteur
+                // ✅ Rester sur currentStep = 3 pour afficher le message d'erreur
+            } else {
+                // ✅ SUCCÈS - Sauvegarder et incrémenter
+                await databases.createDocument(DB_ID, COLLECTIONS.CVS, ID.unique(), {
+                    userId: user.$id, fileId: fileResponse.$id, fileName: fileResponse.name,
+                    extractedData: JSON.stringify(analysis), score: analysis.score, isValidated: true
+                }, [Permission.read(Role.user(user.$id)), Permission.update(Role.user(user.$id)), Permission.delete(Role.user(user.$id))]);
 
-            setAiAnalysis(analysis);
-            setCurrentStep(3);
-            
-            const newCount = analysisCount + 1;
-            setAnalysisCount(newCount);
-            localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
-            console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée avec succès`);
+                setAiAnalysis(analysis);
+                const newCount = analysisCount + 1;
+                setAnalysisCount(newCount);
+                localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
+                console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée`);
+            }
         } catch (err) {
             setUploadMessage(`Erreur : ${err.message}`);
+            setCurrentStep(2);
         } finally { setIsUploading(false); }
     };
 
@@ -763,20 +725,20 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                             <img src="/logo.png" alt="JobDiagnose" className="h-12 w-auto" />
                         </Link>
                         <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            {authMode === 'login' && 'Bon retour parmi nous'}
+                            {authMode === 'login' && 'Bon retour'}
                             {authMode === 'register' && 'Créez votre compte'}
                             {authMode === 'forgot' && 'Mot de passe oublié'}
-                            {authMode === 'reset' && 'Réinitialiser le mot de passe'}
+                            {authMode === 'reset' && 'Réinitialiser'}
                         </h2>
                         <p className="text-gray-500 dark:text-gray-400 mt-2">
-                            {authMode === 'login' && 'Connectez-vous pour analyser votre CV'}
-                            {authMode === 'register' && 'Commencez gratuitement en 30 secondes'}
-                            {authMode === 'forgot' && 'Entrez votre e-mail pour recevoir un lien de réinitialisation'}
-                            {authMode === 'reset' && 'Choisissez votre nouveau mot de passe'}
+                            {authMode === 'login' && 'Connectez-vous'}
+                            {authMode === 'register' && 'Commencez gratuitement'}
+                            {authMode === 'forgot' && 'Entrez votre e-mail'}
+                            {authMode === 'reset' && 'Nouveau mot de passe'}
                         </p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none p-8 border border-gray-100 dark:border-gray-800">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-800">
                         {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-6 text-sm">{error}</div>}
                         {message && <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-xl mb-6 text-sm">{message}</div>}
 
@@ -784,27 +746,25 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                             <form onSubmit={handleAuth} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
-                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="vous@exemple.com" />
+                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="vous@exemple.com" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mot de passe</label>
-                                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="••••••••" />
+                                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <button type="button" onClick={() => { setAuthMode('forgot'); setError(''); setMessage(''); }} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                                    <button type="button" onClick={() => { setAuthMode('forgot'); setError(''); setMessage(''); }} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 font-medium">
                                         Mot de passe oublié ?
                                     </button>
-                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
+                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                                         {theme === 'dark' ? <ThemeIcon.Sun /> : <ThemeIcon.Moon />}
                                     </button>
                                 </div>
-                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
+                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30">
                                     Se connecter
                                 </button>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
-                                    Ce site est protégé par reCAPTCHA. Les 
-                                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Conditions d'utilisation</a> et la 
-                                    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Politique de confidentialité</a> de Google s'appliquent.
+                                    Protégé par reCAPTCHA. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Confidentialité</a>
                                 </p>
                             </form>
                         )}
@@ -812,29 +772,27 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                         {authMode === 'register' && (
                             <form onSubmit={handleAuth} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nom complet</label>
-                                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Jean Dupont" />
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nom</label>
+                                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Jean Dupont" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
-                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="vous@exemple.com" />
+                                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="vous@exemple.com" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mot de passe</label>
-                                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="••••••••" />
+                                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
                                 </div>
                                 <div className="flex justify-end">
-                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
+                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                                         {theme === 'dark' ? <ThemeIcon.Sun /> : <ThemeIcon.Moon />}
                                     </button>
                                 </div>
-                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
+                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30">
                                     Créer mon compte
                                 </button>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
-                                    Ce site est protégé par reCAPTCHA. Les 
-                                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Conditions d'utilisation</a> et la 
-                                    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"> Politique de confidentialité</a> de Google s'appliquent.
+                                    Protégé par reCAPTCHA. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Confidentialité</a>
                                 </p>
                             </form>
                         )}
@@ -842,16 +800,16 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                         {authMode === 'forgot' && (
                             <form onSubmit={handleForgotPassword} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Adresse e-mail</label>
-                                    <input type="email" value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="vous@exemple.com" />
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                                    <input type="email" value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="vous@exemple.com" />
                                 </div>
                                 <div className="flex justify-end">
-                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
+                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                                         {theme === 'dark' ? <ThemeIcon.Sun /> : <ThemeIcon.Moon />}
                                     </button>
                                 </div>
-                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
-                                    Envoyer le lien de réinitialisation
+                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30">
+                                    Envoyer le lien
                                 </button>
                             </form>
                         )}
@@ -860,44 +818,44 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                             <form onSubmit={handleResetPassword} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nouveau mot de passe</label>
-                                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="••••••••" />
+                                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirmer le mot de passe</label>
-                                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="••••••••" />
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirmer</label>
+                                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
                                 </div>
                                 <div className="flex justify-end">
-                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
+                                    <button type="button" onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                                         {theme === 'dark' ? <ThemeIcon.Sun /> : <ThemeIcon.Moon />}
                                     </button>
                                 </div>
-                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30">
-                                    Réinitialiser le mot de passe
+                                <button type="submit" className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30">
+                                    Réinitialiser
                                 </button>
                             </form>
                         )}
 
                         <div className="mt-6 text-center space-y-2">
                             {authMode === 'login' && (
-                                <button onClick={() => { setAuthMode('register'); setError(''); setMessage(''); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                                    Pas encore de compte ? S'inscrire
+                                <button onClick={() => { setAuthMode('register'); setError(''); setMessage(''); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600">
+                                    Pas de compte ? S'inscrire
                                 </button>
                             )}
                             {authMode === 'register' && (
-                                <button onClick={() => { setAuthMode('login'); setError(''); setMessage(''); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                <button onClick={() => { setAuthMode('login'); setError(''); setMessage(''); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600">
                                     Déjà un compte ? Se connecter
                                 </button>
                             )}
                             {(authMode === 'forgot' || authMode === 'reset') && (
-                                <button onClick={() => { setAuthMode('login'); setError(''); setMessage(''); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                                    ← Retour à la connexion
+                                <button onClick={() => { setAuthMode('login'); setError(''); setMessage(''); }} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600">
+                                    ← Retour
                                 </button>
                             )}
                         </div>
                     </div>
 
                     <div className="text-center mt-6">
-                        <Link to="/" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">← Retour à l'accueil</Link>
+                        <Link to="/" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">← Retour</Link>
                     </div>
                 </div>
             </div>
@@ -913,18 +871,18 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                             <img src="/logo.png" alt="JobDiagnose" className="h-10 w-auto" />
                         </Link>
                         <div className="hidden md:flex items-center gap-2">
-                            <Link to="/dashboard" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Mon espace</Link>
-                            <Link to="/" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Accueil</Link>
+                            <Link to="/dashboard" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 font-medium">Mon espace</Link>
+                            <Link to="/" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 font-medium">Accueil</Link>
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                                 <span className="text-xs">{userPlan === 'premium' ? '' : (userPlan === 'essentiel' ? '⭐' : '')}</span>
                                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 capitalize">{userPlan}</span>
                             </div>
-                            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
+                            <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                                 {theme === 'dark' ? <ThemeIcon.Sun /> : <ThemeIcon.Moon />}
                             </button>
-                            <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 font-medium transition-colors">Déconnexion</button>
+                            <button onClick={handleLogout} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 font-medium">Déconnexion</button>
                         </div>
-                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
                             {mobileMenuOpen ? (
                                 <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             ) : (
@@ -934,7 +892,7 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                     </div>
                     {mobileMenuOpen && (
                         <div className="md:hidden py-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
-                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium"> Mon espace</Link>
+                            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">📊 Mon espace</Link>
                             <Link to="/" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium"> Accueil</Link>
                             <button onClick={toggleTheme} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">
                                 {theme === 'dark' ? '️ Mode clair' : '🌙 Mode sombre'}
@@ -948,10 +906,10 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
             <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <div className="mb-10">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV en 30 secondes.</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Plan : <span className="font-semibold capitalize">{userPlan}</span> | 
-                        Analyses utilisées : <span className="font-semibold">{analysisCount}/{planQuota}</span>
+                        Analyses : <span className="font-semibold">{analysisCount}/{planQuota}</span>
                     </p>
                 </div>
 
@@ -982,19 +940,19 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">Vous avez un code d'activation ?</p>
-                                    <p className="text-xs text-gray-600 dark:text-gray-400">Débloquez des analyses supplémentaires</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">Code d'activation ?</p>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">Débloquez plus d'analyses</p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowActivationForm(!showActivationForm)} className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg text-sm font-semibold hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap">
-                                {showActivationForm ? 'Fermer' : 'Activer un code'}
+                            <button onClick={() => setShowActivationForm(!showActivationForm)} className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg text-sm font-semibold hover:bg-blue-50 dark:hover:bg-gray-700 whitespace-nowrap">
+                                {showActivationForm ? 'Fermer' : 'Activer'}
                             </button>
                         </div>
                         {showActivationForm && (
                             <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <input type="text" value={activationCode} onChange={(e) => setActivationCode(e.target.value.toUpperCase())} placeholder="JD-ESS-XXXX" className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
-                                    <button type="button" onClick={handleActivationClick} disabled={isActivating} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                                    <button type="button" onClick={handleActivationClick} disabled={isActivating} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
                                         {isActivating ? '...' : 'Activer'}
                                     </button>
                                 </div>
@@ -1006,10 +964,10 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                 )}
 
                 {(currentStep === 1 || currentStep === 2) && (
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-800 overflow-hidden">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                         <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-gray-800">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{currentStep === 1 ? 'Déposez votre CV' : 'Vérifiez et lancez l\'analyse'}</h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{currentStep === 1 ? 'Formats acceptés : PDF, DOCX' : 'Modifiez le texte si nécessaire avant l\'analyse'}</p>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{currentStep === 1 ? 'Déposez votre CV' : 'Vérifiez et lancez'}</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{currentStep === 1 ? 'PDF, DOCX' : 'Modifiez si nécessaire'}</p>
                         </div>
                         <div className="p-6 sm:p-8 space-y-6">
                             <div>
@@ -1024,11 +982,11 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                                                 <div className="text-center">
                                                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedFile.name}</p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                                                    <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">Fichier chargé</p>
+                                                    <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">Chargé</p>
                                                 </div>
                                             ) : (
                                                 <div className="text-center">
-                                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Cliquez pour uploader ou glissez-déposez</p>
+                                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Cliquez ou glissez-déposez</p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF ou DOCX (max 5MB)</p>
                                                 </div>
                                             )}
@@ -1039,7 +997,7 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                                         <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                                             <div className="flex items-center gap-3">
                                                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Extraction du texte...</span>
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Extraction...</span>
                                             </div>
                                         </div>
                                     )}
@@ -1047,20 +1005,20 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Texte extrait <span className="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500">modifiable</span></label>
-                                <textarea value={cvText} onChange={(e) => setCvText(e.target.value)} disabled={isUploading} placeholder="Le texte de votre CV apparaîtra ici après l'upload..." className="w-full h-32 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm" />
+                                <textarea value={cvText} onChange={(e) => setCvText(e.target.value)} disabled={isUploading} placeholder="Le texte apparaîtra ici..." className="w-full h-32 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Offre d'emploi <span className="ml-2 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-medium rounded-md">Optionnel</span></label>
-                                <textarea value={jobOfferText} onChange={(e) => setJobOfferText(e.target.value)} disabled={isUploading} placeholder="Collez la description du poste pour une analyse de matching..." className="w-full h-28 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm" />
+                                <textarea value={jobOfferText} onChange={(e) => setJobOfferText(e.target.value)} disabled={isUploading} placeholder="Collez l'offre pour un matching..." className="w-full h-28 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
                             </div>
                             {uploadMessage && !showPaywall && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm">{uploadMessage}</div>}
                             {showPaywall && (
                                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Quota d'analyses atteint</h3>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Vous avez utilisé vos {planQuota} analyse(s) {userPlan === 'free' || userPlan === 'découverte' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code ou découvrez nos formules pour continuer.</p>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Quota atteint</h3>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Vous avez utilisé vos {planQuota} analyse(s). Activez un code pour continuer.</p>
                                     <div className="grid sm:grid-cols-2 gap-3">
-                                        <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm">J'ai un code</button>
-                                        <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
+                                        <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">J'ai un code</button>
+                                        <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 text-sm flex items-center justify-center gap-2">
                                             Voir les tarifs
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                                         </Link>
@@ -1068,7 +1026,7 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                                 </div>
                             )}
                             <button onClick={handleUploadCV} disabled={isUploading || isExtracting || !selectedFile || !cvText.trim() || showPaywall} className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 dark:disabled:from-gray-700 disabled:to-gray-300 dark:disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 disabled:shadow-none flex items-center justify-center gap-2">
-                                {isUploading ? (<><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Analyse en cours...</span></>) : (<><span>{jobOfferText.trim() ? 'Analyser le matching' : 'Lancer l\'analyse'}</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg></>)}
+                                {isUploading ? (<><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><span>Analyse...</span></>) : (<><span>{jobOfferText.trim() ? 'Analyser le matching' : 'Lancer l\'analyse'}</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg></>)}
                             </button>
                         </div>
                     </div>
@@ -1076,48 +1034,74 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
 
                 {currentStep === 3 && aiAnalysis && (
                     <div className="space-y-6 animate-in fade-in duration-500">
-                        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-blue-500/30 text-white relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32"></div>
-                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24"></div>
-                            <div className="relative">
-                                <div className="flex flex-col sm:flex-row items-center gap-8">
-                                    <div className="relative">
-                                        <svg className="w-40 h-40 -rotate-90">
-                                            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.2)" strokeWidth="12" fill="none" />
-                                            <circle cx="80" cy="80" r="70" stroke="white" strokeWidth="12" fill="none" strokeDasharray={`${(aiAnalysis.score / 100) * 440} 440`} strokeLinecap="round" className="transition-all duration-1000" />
-                                        </svg>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <div className="text-5xl font-bold">{aiAnalysis.score}</div>
-                                            <div className="text-sm text-blue-100">/100</div>
-                                        </div>
+                        {/* ✅ SI SCORE = 0 : Afficher message d'erreur */}
+                        {aiAnalysis.score === 0 ? (
+                            <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border-2 border-red-300 dark:border-red-800 rounded-3xl p-8 sm:p-10">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mb-6">
+                                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                     </div>
-                                    <div className="flex-1 text-center sm:text-left">
-                                        <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-semibold mb-3">
-                                            {aiAnalysis.score === 0 ? 'FORMAT INVALIDE' : aiAnalysis.score >= 70 ? 'EXCELLENT' : aiAnalysis.score >= 50 ? 'BON' : 'À AMÉLIORER'}
-                                        </div>
-                                        <h2 className="text-2xl sm:text-3xl font-bold mb-2">
-                                            {aiAnalysis.score === 0 ? 'Format non analysable' : aiAnalysis.score >= 70 ? 'Votre CV est très compétitif' : aiAnalysis.score >= 50 ? 'Bon point de départ' : 'Des améliorations nécessaires'}
-                                        </h2>
-                                        <p className="text-blue-100 text-sm sm:text-base mb-2">{aiAnalysis.matching_summary}</p>
-                                        <p className="text-white/80 text-xs sm:text-sm italic">{aiAnalysis.conseil_titre}</p>
+                                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">Erreur de format</h2>
+                                    <p className="text-gray-700 dark:text-gray-300 mb-6 max-w-md">
+                                        Nous n'avons pas pu analyser votre CV. Le format n'est pas correct ou le texte est illisible.
+                                    </p>
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 max-w-md">
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Causes possibles :</p>
+                                        <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside text-left">
+                                            <li>CV au format image (scan)</li>
+                                            <li>PDF protégé ou corrompu</li>
+                                            <li>Texte trop court ou illisible</li>
+                                        </ul>
                                     </div>
-                                </div>
-                                <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-white/20">
-                                    {aiAnalysis.score > 0 && (
-                                        <button onClick={exportToPDF} className="flex-1 py-3 px-5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                            Télécharger le rapport PDF
-                                        </button>
-                                    )}
-                                    <button onClick={() => { setAiAnalysis(null); setCurrentStep(1); setSelectedFile(null); setCvText(''); setJobOfferText(''); }} className="flex-1 py-3 px-5 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/20 transition-colors border border-white/20">
-                                        Nouvelle analyse
+                                    <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-6">
+                                        💡 Cette analyse n'a pas été comptabilisée.
+                                    </p>
+                                    <button onClick={() => { setAiAnalysis(null); setCurrentStep(1); setSelectedFile(null); setCvText(''); setJobOfferText(''); setUploadMessage(''); }} className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30">
+                                        Réessayer avec un autre CV
                                     </button>
                                 </div>
                             </div>
-                        </div>
-
-                        {aiAnalysis.score > 0 && (
+                        ) : (
+                            /* ✅ SI SCORE > 0 : Afficher les résultats normaux */
                             <>
+                                <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-blue-500/30 text-white relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32"></div>
+                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24"></div>
+                                    <div className="relative">
+                                        <div className="flex flex-col sm:flex-row items-center gap-8">
+                                            <div className="relative">
+                                                <svg className="w-40 h-40 -rotate-90">
+                                                    <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.2)" strokeWidth="12" fill="none" />
+                                                    <circle cx="80" cy="80" r="70" stroke="white" strokeWidth="12" fill="none" strokeDasharray={`${(aiAnalysis.score / 100) * 440} 440`} strokeLinecap="round" className="transition-all duration-1000" />
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <div className="text-5xl font-bold">{aiAnalysis.score}</div>
+                                                    <div className="text-sm text-blue-100">/100</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 text-center sm:text-left">
+                                                <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-semibold mb-3">
+                                                    {aiAnalysis.score >= 70 ? 'EXCELLENT' : aiAnalysis.score >= 50 ? 'BON' : 'À AMÉLIORER'}
+                                                </div>
+                                                <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+                                                    {aiAnalysis.score >= 70 ? 'CV très compétitif' : aiAnalysis.score >= 50 ? 'Bon point de départ' : 'Améliorations nécessaires'}
+                                                </h2>
+                                                <p className="text-blue-100 text-sm sm:text-base mb-2">{aiAnalysis.matching_summary}</p>
+                                                <p className="text-white/80 text-xs sm:text-sm italic">{aiAnalysis.conseil_titre}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-white/20">
+                                            <button onClick={exportToPDF} className="flex-1 py-3 px-5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                Télécharger PDF
+                                            </button>
+                                            <button onClick={() => { setAiAnalysis(null); setCurrentStep(1); setSelectedFile(null); setCvText(''); setJobOfferText(''); }} className="flex-1 py-3 px-5 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/20 transition-colors border border-white/20">
+                                                Nouvelle analyse
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
                                         <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
@@ -1151,14 +1135,16 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                                             </div>
                                         </div>
                                         <div className="p-5 space-y-3">
-                                            {aiAnalysis.faiblesses.map((f, i) => (
+                                            {aiAnalysis.faiblesses.length > 0 ? aiAnalysis.faiblesses.map((f, i) => (
                                                 <div key={i} className="flex gap-3 p-3 bg-orange-50/50 dark:bg-orange-900/10 rounded-xl">
                                                     <div className="flex-shrink-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center mt-0.5">
                                                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                                     </div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{f}</p>
                                                 </div>
-                                            ))}
+                                            )) : (
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">Aucun axe d'amélioration identifié.</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1176,30 +1162,6 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                                 </div>
                             </>
                         )}
-
-                        {aiAnalysis.score === 0 && (
-                            <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
-                                <div className="flex gap-4">
-                                    <div className="flex-shrink-0 w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white mb-1">Format non analysable</h3>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
-                                            Nous n'avons pas pu analyser votre CV correctement. Cela peut être dû à :
-                                        </p>
-                                        <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
-                                            <li>Un CV au format image (scan)</li>
-                                            <li>Un PDF protégé ou corrompu</li>
-                                            <li>Un texte trop court ou illisible</li>
-                                        </ul>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-3 font-medium">
-                                            💡 Cette analyse n'a pas été comptabilisée. Vous pouvez réessayer avec un autre fichier.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -1209,7 +1171,7 @@ Sinon, évalue la qualité sur 100 et réponds en JSON :
                             <svg className="w-10 h-10 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         </div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Analyse en cours...</h3>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">Notre IA examine votre CV selon 50+ critères</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">Notre IA examine votre CV</p>
                         <div className="mt-6 max-w-xs mx-auto">
                             <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                                 <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full animate-pulse" style={{width: '60%'}}></div>
