@@ -292,44 +292,23 @@ export default function Auth() {
         await handleFileSelect({ target: { files: [file] } });
     };
 
-    const analyzeWithAI = async (text) => {
+        const analyzeWithAI = async (text) => {
         try {
             const hasOffer = jobOfferText.trim().length > 50;
             
-            let prompt = '';
-            
-            if (hasOffer) {
-                prompt = `Évalue le MATCHING entre ce CV et cette offre.
+            // PROMPT RADICAL : On ne donne JAMAIS d'exemple avec 65 pour éviter que l'IA ne le copie
+            const prompt = hasOffer
+                ? `Analyse ce CV pour cette offre.
+CV: """${text.substring(0, 2000)}"""
+OFFRE: """${jobOfferText.substring(0, 2000)}"""
 
-CV :
-"""
-${text.substring(0, 3000)}
-"""
+RÈGLE ABSOLUE : Si le texte est illisible, vide ou incompréhensible, réponds UNIQUEMENT : {"score": 0, "error": true}
+Sinon, réponds en JSON : {"score": [nombre], "summary": "...", "forces": [...], "faiblesses": [...], "conseil": "..."}`
+                : `Analyse ce CV.
+CV: """${text.substring(0, 2000)}"""
 
-OFFRE :
-"""
-${jobOfferText.substring(0, 3000)}
-"""
-
-Si le texte est illisible ou incompréhensible, réponds EXACTEMENT avec score 0 :
-{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Texte non analysable"], "conseil_titre": "Revoir le format"}
-
-Sinon, évalue sur 100 et réponds en JSON :
-{"score": 72, "matching_summary": "...", "forces": ["...", "...", "..."], "faiblesses": ["...", "...", "..."], "conseil_titre": "..."}`;
-            } else {
-                prompt = `Analyse ce CV.
-
-CV :
-"""
-${text.substring(0, 3000)}
-"""
-
-Si le CV est illisible ou incompréhensible, réponds EXACTEMENT avec score 0 :
-{"score": 0, "matching_summary": "Format illisible", "forces": [], "faiblesses": ["Texte non analysable"], "conseil_titre": "Revoir le format"}
-
-Sinon, évalue sur 100 et réponds en JSON :
-{"score": 65, "matching_summary": "...", "forces": ["...", "...", "..."], "faiblesses": ["...", "...", "..."], "conseil_titre": "..."}`;
-            }
+RÈGLE ABSOLUE : Si le texte est illisible, vide ou incompréhensible, réponds UNIQUEMENT : {"score": 0, "error": true}
+Sinon, réponds en JSON : {"score": [nombre], "summary": "...", "forces": [...], "faiblesses": [...], "conseil": "..."}`;
             
             const response = await fetch('/api/gemini', { 
                 method: 'POST', 
@@ -338,82 +317,43 @@ Sinon, évalue sur 100 et réponds en JSON :
             });
             
             const data = await response.json();
-            
             if (data.error) throw new Error(data.error);
             
             let raw = data.result;
             
+            // Nettoyage du JSON (enlève les ```json ... ```)
             if (typeof raw === 'string') {
-                try {
-                    const cleanJson = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-                    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        raw = JSON.parse(jsonMatch[0]);
-                    } else {
-                        // ❌ Pas de JSON trouvé = échec
-                        return { 
-                            score: 0, 
-                            matching_summary: "Format illisible",
-                            forces: [], 
-                            faiblesses: ["Le texte n'est pas analysable."], 
-                            conseil_titre: "Revoir le format" 
-                        };
-                    }
-                } catch (e) {
-                    // ❌ Erreur parsing = échec
-                    return { 
-                        score: 0, 
-                        matching_summary: "Format illisible",
-                        forces: [], 
-                        faiblesses: ["Le texte n'est pas analysable."], 
-                        conseil_titre: "Revoir le format" 
-                    };
-                }
+                const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+                const match = cleanJson.match(/\{[\s\S]*\}/);
+                if (match) raw = JSON.parse(match[0]);
             }
 
-            // ✅ Si raw est un objet, extraire le score
-            if (raw && typeof raw === 'object') {
-                const parsedScore = parseInt(raw.score, 10);
-                
-                // Si score est 0 ou invalide, c'est un échec
-                if (isNaN(parsedScore) || parsedScore < 10 || parsedScore > 95) {
-                    return { 
-                        score: 0, 
-                        matching_summary: "Format illisible",
-                        forces: [], 
-                        faiblesses: ["Le texte n'est pas analysable."], 
-                        conseil_titre: "Revoir le format" 
-                    };
-                }
-                
-                // Score valide
-                return {
-                    score: parsedScore,
-                    matching_summary: raw.matching_summary || "Analyse complète",
-                    forces: Array.isArray(raw.forces) ? raw.forces : [],
-                    faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : [],
-                    conseil_titre: raw.conseil_titre || "Améliorez votre CV"
-                };
+            // ✅ DÉTECTION D'ÉCHEC TOTALE
+            // Si l'IA a renvoyé error: true, ou si le score est 0, ou si le parsing a raté
+            if (!raw || raw.error === true || raw.score === 0) {
+                return { score: 0, isFailed: true };
             }
+
+            const finalScore = parseInt(raw.score);
             
-            // ❌ raw n'est pas un objet = échec
-            return { 
-                score: 0, 
-                matching_summary: "Format illisible",
-                forces: [], 
-                faiblesses: ["Le texte n'est pas analysable."], 
-                conseil_titre: "Revoir le format" 
+            // Si le score n'est pas un nombre valide, c'est un échec
+            if (isNaN(finalScore) || finalScore < 10) {
+                return { score: 0, isFailed: true };
+            }
+
+            return {
+                score: finalScore,
+                isFailed: false,
+                matching_summary: raw.summary || raw.matching_summary || "Analyse OK",
+                forces: Array.isArray(raw.forces) ? raw.forces : [],
+                faiblesses: Array.isArray(raw.faiblesses) ? raw.faiblesses : [],
+                conseil_titre: raw.conseil || raw.conseil_titre || "Voir détails"
             };
-            
+
         } catch (error) {
-            console.error('❌ Erreur IA:', error);
-            return { 
-                score: 0, 
-                matching_summary: "Format illisible",
-                forces: [], 
-                faiblesses: ["Le texte n'est pas analysable."], 
-                conseil_titre: "Revoir le format" 
-            };
+            console.error('Erreur IA:', error);
+            // ✅ JAMAIS DE 65 ICI. Toujours 0 en cas de crash.
+            return { score: 0, isFailed: true }; 
         }
     };
 
@@ -661,44 +601,44 @@ Sinon, évalue sur 100 et réponds en JSON :
         doc.save(`JobDiagnose_Rapport_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
-    const handleUploadCV = async (e) => {
+        const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
         
         if (analysisCount >= planQuota) { 
             setShowPaywall(true); 
-            setUploadMessage(`Quota atteint : ${planQuota} analyse(s).`); 
+            setUploadMessage(`Quota atteint.`); 
             return; 
         }
 
+        // Vérification Captcha
         if (!executeRecaptcha) { setUploadMessage('Sécurité non chargée.'); return; }
         const token = await executeRecaptcha('upload_action');
-        const verifyRes = await fetch('/api/verify-captcha', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ token }) 
-        });
+        const verifyRes = await fetch('/api/verify-captcha', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
         const verifyData = await verifyRes.json();
         if (!verifyData.success || verifyData.score < 0.5) {
-            setUploadMessage('Activité suspecte.');
-            return;
+            setUploadMessage('Activité suspecte.'); return;
         }
 
-        setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
+        setIsUploading(true); 
+        setUploadMessage(''); 
+        setAiAnalysis(null); 
+        setCurrentStep(3); // On va à l'étape 3 pour afficher le résultat (ou l'erreur)
+
         try {
             const fileResponse = await storage.createFile(BUCKET_ID, ID.unique(), selectedFile);
             const analysis = await analyzeWithAI(cvText);
             
-            // ✅ SI SCORE = 0 : ÉCHEC - Ne pas sauvegarder, ne pas incrémenter
-            if (analysis.score === 0) {
-                console.log('⚠️ Analyse échouée - Score 0');
-                setAiAnalysis(analysis);
+            // ✅ LOGIQUE BINAIRE : ÉCHEC OU SUCCÈS
+            if (analysis.isFailed || analysis.score === 0) {
+                // ❌ ÉCHEC
+                console.warn('Échec analyse');
                 setUploadMessage('Erreur de format. Réessayez.');
-                // ❌ NE PAS sauvegarder dans Appwrite
-                // ❌ NE PAS incrémenter le compteur
-                // ✅ Rester sur currentStep = 3 pour afficher le message d'erreur
+                setAiAnalysis(analysis); // Pour afficher l'écran rouge
+                // On ne sauvegarde PAS en base
+                // On n'incrémente PAS le compteur
             } else {
-                // ✅ SUCCÈS - Sauvegarder et incrémenter
+                // ✅ SUCCÈS
                 await databases.createDocument(DB_ID, COLLECTIONS.CVS, ID.unique(), {
                     userId: user.$id, fileId: fileResponse.$id, fileName: fileResponse.name,
                     extractedData: JSON.stringify(analysis), score: analysis.score, isValidated: true
@@ -708,12 +648,13 @@ Sinon, évalue sur 100 et réponds en JSON :
                 const newCount = analysisCount + 1;
                 setAnalysisCount(newCount);
                 localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
-                console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée`);
             }
         } catch (err) {
             setUploadMessage(`Erreur : ${err.message}`);
             setCurrentStep(2);
-        } finally { setIsUploading(false); }
+        } finally { 
+            setIsUploading(false); 
+        }
     };
 
     if (!user) {
