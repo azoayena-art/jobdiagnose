@@ -40,6 +40,7 @@ export default function Auth() {
     const [message, setMessage] = useState('');
     const [user, setUser] = useState(null);
     const [userPlan, setUserPlan] = useState('free');
+    const [planQuota, setPlanQuota] = useState(3); // ✅ Quota dynamique chargé depuis Appwrite
     
     const [selectedFile, setSelectedFile] = useState(null);
     const [cvText, setCvText] = useState('');
@@ -51,7 +52,12 @@ export default function Auth() {
     const [currentStep, setCurrentStep] = useState(1);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     
-    const [freeAnalysisCount, setFreeAnalysisCount] = useState(() => parseInt(localStorage.getItem('jobdiagnose_free_count') || '0'));
+    // ✅ Compteur unique pour tous les plans (gratuit, essentiel, premium)
+    const [analysisCount, setAnalysisCount] = useState(() => {
+        const userId = typeof window !== 'undefined' ? localStorage.getItem('jobdiagnose_current_user_id') : null;
+        return parseInt(localStorage.getItem(`jobdiagnose_analysis_count_${userId || 'default'}`) || '0');
+    });
+    
     const [showPaywall, setShowPaywall] = useState(false);
     const [activationCode, setActivationCode] = useState('');
     const [showActivationForm, setShowActivationForm] = useState(false);
@@ -74,8 +80,33 @@ export default function Auth() {
         try {
             const currentUser = await account.get();
             setUser(currentUser);
+            localStorage.setItem('jobdiagnose_current_user_id', currentUser.$id);
+            
             const savedPlan = localStorage.getItem(`jobdiagnose_plan_${currentUser.$id}`);
             if (savedPlan) setUserPlan(savedPlan);
+            
+            // ✅ Charger le quota d'analyses depuis la collection pricing
+            try {
+                const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
+                const planName = savedPlan || 'gratuit';
+                const userPlanDoc = pricingRes.documents.find(p => 
+                    p.name.toLowerCase() === planName.toLowerCase() ||
+                    p.name.toLowerCase().includes(planName) ||
+                    (planName === 'free' && p.name.toLowerCase().includes('gratuit'))
+                );
+                
+                if (userPlanDoc && userPlanDoc.analyses) {
+                    const quota = parseInt(userPlanDoc.analyses, 10);
+                    setPlanQuota(quota);
+                    console.log(`✅ Quota chargé depuis Appwrite: ${quota} analyses pour le plan ${planName}`);
+                } else {
+                    console.warn(`⚠️ Plan "${planName}" non trouvé ou champ analyses manquant, quota par défaut: 3`);
+                    setPlanQuota(3);
+                }
+            } catch (e) {
+                console.warn(' Impossible de charger le quota pricing:', e);
+                setPlanQuota(3);
+            }
         } catch (err) { setUser(null); }
     };
 
@@ -129,6 +160,7 @@ export default function Auth() {
     };
 
     const handleLogout = async () => {
+        localStorage.removeItem('jobdiagnose_current_user_id');
         await account.deleteSession('current');
         setUser(null);
         resetForm();
@@ -161,6 +193,20 @@ export default function Auth() {
             setUserPlan(planType);
             setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode(''); setShowActivationForm(false); setShowPaywall(false);
+            
+            // ✅ Recharger le quota après activation d'un nouveau plan
+            try {
+                const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
+                const userPlanDoc = pricingRes.documents.find(p => 
+                    p.name.toLowerCase() === planType.toLowerCase() ||
+                    p.name.toLowerCase().includes(planType)
+                );
+                if (userPlanDoc && userPlanDoc.analyses) {
+                    setPlanQuota(parseInt(userPlanDoc.analyses, 10));
+                }
+            } catch (e) {
+                console.warn('Erreur rechargement quota:', e);
+            }
         } catch (err) { setError(err.message); } finally { setIsActivating(false); }
     };
 
@@ -216,7 +262,7 @@ export default function Auth() {
             }
         } else if (isDOCX || isDOC) {
             setCvText('');
-            setUploadMessage(`⚠️ Format DOC/DOCX détecté : l'extraction automatique n'est pas disponible. Veuillez ouvrir votre fichier Word, copier tout le texte (Ctrl+A puis Ctrl+C), et le coller dans la zone "Texte extrait" ci-dessous.`);
+            setUploadMessage(`️ Format DOC/DOCX détecté : l'extraction automatique n'est pas disponible. Veuillez ouvrir votre fichier Word, copier tout le texte (Ctrl+A puis Ctrl+C), et le coller dans la zone "Texte extrait" ci-dessous.`);
         }
     };
 
@@ -308,7 +354,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             
             console.log('🔍 Type de raw:', typeof raw, '| Valeur:', raw);
             
-            // Nettoyage robuste
             if (typeof raw === 'string') {
                 try {
                     const cleanJson = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
@@ -325,7 +370,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                 }
             }
 
-            // Extraction sécurisée du score
             let finalScore = 65;
             if (raw && typeof raw === 'object') {
                 console.log('🎯 Objet raw reçu:', raw);
@@ -647,7 +691,13 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
     const handleUploadCV = async (e) => {
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
-        if (userPlan === 'free' && freeAnalysisCount >= 3) { setShowPaywall(true); setUploadMessage('3 analyses gratuites utilisées. Activez un code.'); return; }
+        
+        // ✅ Vérification dynamique du quota basé sur le plan
+        if (analysisCount >= planQuota) { 
+            setShowPaywall(true); 
+            setUploadMessage(`Quota atteint : vous avez utilisé vos ${planQuota} analyse(s) ${userPlan === 'free' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code pour continuer.`); 
+            return; 
+        }
 
         setIsUploading(true); setUploadMessage(''); setAiAnalysis(null); setCurrentStep(3);
         try {
@@ -659,11 +709,12 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             }, [Permission.read(Role.user(user.$id)), Permission.update(Role.user(user.$id)), Permission.delete(Role.user(user.$id))]);
 
             setAiAnalysis(analysis);
-            if (userPlan === 'free') {
-                const newCount = freeAnalysisCount + 1;
-                setFreeAnalysisCount(newCount);
-                localStorage.setItem('jobdiagnose_free_count', newCount.toString());
-            }
+            
+            // ✅ Incrémenter le compteur d'analyses
+            const newCount = analysisCount + 1;
+            setAnalysisCount(newCount);
+            localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
+            console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée`);
         } catch (err) {
             setUploadMessage(`Erreur : ${err.message}`);
             setCurrentStep(2);
@@ -828,7 +879,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                             <Link to="/dashboard" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Mon espace</Link>
                             <Link to="/" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Accueil</Link>
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <span className="text-xs">{userPlan === 'premium' ? '' : (userPlan === 'essentiel' ? '⭐' : '🆓')}</span>
+                                <span className="text-xs">{userPlan === 'premium' ? '' : (userPlan === 'essentiel' ? '⭐' : '')}</span>
                                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 capitalize">{userPlan}</span>
                             </div>
                             <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Changer le thème">
@@ -861,6 +912,11 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                 <div className="mb-10">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
+                    {/* ✅ Affichage du quota dynamique */}
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Plan : <span className="font-semibold capitalize">{userPlan}</span> | 
+                        Analyses utilisées : <span className="font-semibold">{analysisCount}/{planQuota}</span>
+                    </p>
                 </div>
 
                 <div className="mb-10">
@@ -962,10 +1018,10 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                                 <textarea value={jobOfferText} onChange={(e) => setJobOfferText(e.target.value)} disabled={isUploading} placeholder="Collez la description du poste pour une analyse de matching..." className="w-full h-28 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm" />
                             </div>
                             {uploadMessage && !showPaywall && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm">{uploadMessage}</div>}
-                            {showPaywall && userPlan === 'free' && (
+                            {showPaywall && (
                                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Analyses gratuites épuisées</h3>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Vous avez utilisé vos 3 analyses gratuites. Découvrez nos formules pour continuer à optimiser votre CV.</p>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Quota d'analyses atteint</h3>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Vous avez utilisé vos {planQuota} analyse(s) {userPlan === 'free' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Découvrez nos formules pour continuer à optimiser votre CV.</p>
                                     <div className="grid sm:grid-cols-2 gap-3">
                                         <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm">J'ai un code</button>
                                         <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
