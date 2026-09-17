@@ -40,7 +40,7 @@ export default function Auth() {
     const [message, setMessage] = useState('');
     const [user, setUser] = useState(null);
     const [userPlan, setUserPlan] = useState('free');
-    const [planQuota, setPlanQuota] = useState(3); // ✅ Quota dynamique chargé depuis Appwrite
+    const [planQuota, setPlanQuota] = useState(3);
     
     const [selectedFile, setSelectedFile] = useState(null);
     const [cvText, setCvText] = useState('');
@@ -52,7 +52,6 @@ export default function Auth() {
     const [currentStep, setCurrentStep] = useState(1);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     
-    // ✅ Compteur unique pour tous les plans (gratuit, essentiel, premium)
     const [analysisCount, setAnalysisCount] = useState(() => {
         const userId = typeof window !== 'undefined' ? localStorage.getItem('jobdiagnose_current_user_id') : null;
         return parseInt(localStorage.getItem(`jobdiagnose_analysis_count_${userId || 'default'}`) || '0');
@@ -85,17 +84,26 @@ export default function Auth() {
             const savedPlan = localStorage.getItem(`jobdiagnose_plan_${currentUser.$id}`);
             if (savedPlan) setUserPlan(savedPlan);
             
-            // ✅ Charger le quota d'analyses depuis la collection pricing
+            // ✅ CORRECTION 1 : Détection robuste du plan avec logs
             try {
                 const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
-                const planName = savedPlan || 'gratuit';
-                const userPlanDoc = pricingRes.documents.find(p => 
-                    p.name.toLowerCase() === planName.toLowerCase() ||
-                    p.name.toLowerCase().includes(planName) ||
-                    (planName === 'free' && p.name.toLowerCase().includes('gratuit'))
-                );
+                const planName = savedPlan || 'free';
+                console.log('🔍 Recherche du plan:', planName, '| Plans disponibles:', pricingRes.documents.map(p => ({ name: p.name, analyses: p.analyses })));
                 
-                if (userPlanDoc && userPlanDoc.analyses) {
+                const userPlanDoc = pricingRes.documents.find(p => {
+                    const docName = p.name.toLowerCase();
+                    const search = planName.toLowerCase();
+                    return docName === search || 
+                           docName.includes(search) || 
+                           search.includes(docName) ||
+                           (search === 'free' && (docName.includes('gratuit') || docName.includes('free'))) ||
+                           (search === 'essentiel' && docName.includes('essentiel')) ||
+                           (search === 'premium' && docName.includes('premium'));
+                });
+                
+                console.log('📄 Plan trouvé:', userPlanDoc);
+                
+                if (userPlanDoc && userPlanDoc.analyses !== undefined) {
                     const quota = parseInt(userPlanDoc.analyses, 10);
                     setPlanQuota(quota);
                     console.log(`✅ Quota chargé depuis Appwrite: ${quota} analyses pour le plan ${planName}`);
@@ -194,7 +202,6 @@ export default function Auth() {
             setActivationMessage(`Code activé ! Plan ${planType.toUpperCase()} débloqué.`);
             setActivationCode(''); setShowActivationForm(false); setShowPaywall(false);
             
-            // ✅ Recharger le quota après activation d'un nouveau plan
             try {
                 const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
                 const userPlanDoc = pricingRes.documents.find(p => 
@@ -262,7 +269,7 @@ export default function Auth() {
             }
         } else if (isDOCX || isDOC) {
             setCvText('');
-            setUploadMessage(`️ Format DOC/DOCX détecté : l'extraction automatique n'est pas disponible. Veuillez ouvrir votre fichier Word, copier tout le texte (Ctrl+A puis Ctrl+C), et le coller dans la zone "Texte extrait" ci-dessous.`);
+            setUploadMessage(`⚠️ Format DOC/DOCX détecté : l'extraction automatique n'est pas disponible. Veuillez ouvrir votre fichier Word, copier tout le texte (Ctrl+A puis Ctrl+C), et le coller dans la zone "Texte extrait" ci-dessous.`);
         }
     };
 
@@ -346,7 +353,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
             
             const data = await response.json();
             
-            console.log('📥 Réponse brute de l\'API:', data);
+            console.log(' Réponse brute de l\'API:', data);
             
             if (data.error) throw new Error(data.error);
             
@@ -710,11 +717,22 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             setAiAnalysis(analysis);
             
-            // ✅ Incrémenter le compteur d'analyses
-            const newCount = analysisCount + 1;
-            setAnalysisCount(newCount);
-            localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
-            console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée`);
+            // ✅ CORRECTION 2 : Ne pas compter l'analyse si elle a échoué
+            const isFailedAnalysis = analysis.score === 65 && 
+                                     (analysis.matching_summary === 'Analyse non disponible' || 
+                                      analysis.forces[0] === 'Expérience pertinente');
+            
+            if (isFailedAnalysis) {
+                console.warn('️ Analyse échouée (format IA incorrect) - Compteur non incrémenté');
+                setUploadMessage('⚠️ L\'analyse n\'a pas pu être traitée correctement. Veuillez réessayer avec un autre CV ou copier-coller le texte manuellement.');
+                setCurrentStep(2);
+            } else {
+                // ✅ Incrémenter le compteur d'analyses uniquement si succès
+                const newCount = analysisCount + 1;
+                setAnalysisCount(newCount);
+                localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
+                console.log(`✅ Analyse #${newCount}/${planQuota} enregistrée avec succès`);
+            }
         } catch (err) {
             setUploadMessage(`Erreur : ${err.message}`);
             setCurrentStep(2);
@@ -902,7 +920,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                             <button onClick={toggleTheme} className="block w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg font-medium">
                                 {theme === 'dark' ? '️ Mode clair' : '🌙 Mode sombre'}
                             </button>
-                            <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium">🚪 Déconnexion</button>
+                            <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium"> Déconnexion</button>
                         </div>
                     )}
                 </div>
@@ -910,12 +928,22 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <div className="mb-10">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
-                    {/* ✅ Affichage du quota dynamique */}
+                    {/* ✅ CORRECTION 3 : Affichage du quota avec bouton réinitialiser */}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Plan : <span className="font-semibold capitalize">{userPlan}</span> | 
                         Analyses utilisées : <span className="font-semibold">{analysisCount}/{planQuota}</span>
+                        <button 
+                            onClick={() => {
+                                localStorage.removeItem(`jobdiagnose_analysis_count_${user.$id}`);
+                                setAnalysisCount(0);
+                                alert('Compteur réinitialisé à 0');
+                            }}
+                            className="ml-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            (Réinitialiser)
+                        </button>
                     </p>
                 </div>
 
