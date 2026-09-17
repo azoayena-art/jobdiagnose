@@ -8,9 +8,6 @@ import { useTheme } from './hooks/useTheme';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-// ═══════════════════════════════════════════════════════════════
-// ICÔNES THÈME
-// ═══════════════════════════════════════════════════════════════
 const ThemeIcon = {
     Sun: () => (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -84,11 +81,10 @@ export default function Auth() {
             const savedPlan = localStorage.getItem(`jobdiagnose_plan_${currentUser.$id}`);
             if (savedPlan) setUserPlan(savedPlan);
             
-            // ✅ CORRECTION 1 : Détection robuste du plan avec logs
             try {
                 const pricingRes = await databases.listDocuments(DB_ID, COLLECTIONS.PRICING);
                 const planName = savedPlan || 'free';
-                console.log('🔍 Recherche du plan:', planName, '| Plans disponibles:', pricingRes.documents.map(p => ({ name: p.name, analyses: p.analyses })));
+                console.log(' Recherche du plan:', planName, '| Plans disponibles:', pricingRes.documents.map(p => ({ name: p.name, analyses: p.analyses })));
                 
                 const userPlanDoc = pricingRes.documents.find(p => {
                     const docName = p.name.toLowerCase();
@@ -96,7 +92,8 @@ export default function Auth() {
                     return docName === search || 
                            docName.includes(search) || 
                            search.includes(docName) ||
-                           (search === 'free' && (docName.includes('gratuit') || docName.includes('free'))) ||
+                           (search === 'free' && (docName.includes('découverte') || docName.includes('gratuit') || docName.includes('free'))) ||
+                           (search === 'découverte' && docName.includes('découverte')) ||
                            (search === 'essentiel' && docName.includes('essentiel')) ||
                            (search === 'premium' && docName.includes('premium'));
                 });
@@ -387,10 +384,10 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                         finalScore = parsedScore;
                         console.log('✅ Score extrait:', finalScore);
                     } else {
-                        console.warn('⚠️ Score invalide:', raw.score);
+                        console.warn('️ Score invalide:', raw.score);
                     }
                 } else {
-                    console.warn('⚠️ Propriété score absente dans raw');
+                    console.warn('️ Propriété score absente dans raw');
                 }
             } else {
                 console.error('❌ raw n\'est pas un objet:', raw);
@@ -699,10 +696,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
         e.preventDefault();
         if (!selectedFile || !cvText.trim()) { setUploadMessage('Veuillez sélectionner un fichier.'); return; }
         
-        // ✅ Vérification dynamique du quota basé sur le plan
         if (analysisCount >= planQuota) { 
             setShowPaywall(true); 
-            setUploadMessage(`Quota atteint : vous avez utilisé vos ${planQuota} analyse(s) ${userPlan === 'free' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code pour continuer.`); 
+            setUploadMessage(`Quota atteint : vous avez utilisé vos ${planQuota} analyse(s) ${userPlan === 'free' || userPlan === 'découverte' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code pour continuer.`); 
             return; 
         }
 
@@ -717,17 +713,16 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             setAiAnalysis(analysis);
             
-            // ✅ CORRECTION 2 : Ne pas compter l'analyse si elle a échoué
+            // ✅ Détection d'échec élargie : score 65 + forces/faiblesses par défaut = analyse incomplète
             const isFailedAnalysis = analysis.score === 65 && 
-                                     (analysis.matching_summary === 'Analyse non disponible' || 
-                                      analysis.forces[0] === 'Expérience pertinente');
+                                     (analysis.forces[0] === 'Expérience pertinente' || 
+                                      analysis.faiblesses[0] === 'Manque de chiffres');
             
             if (isFailedAnalysis) {
-                console.warn('️ Analyse échouée (format IA incorrect) - Compteur non incrémenté');
+                console.warn('⚠️ Analyse incomplète (score par défaut 65 + valeurs par défaut) - Compteur non incrémenté');
                 setUploadMessage('⚠️ L\'analyse n\'a pas pu être traitée correctement. Veuillez réessayer avec un autre CV ou copier-coller le texte manuellement.');
                 setCurrentStep(2);
             } else {
-                // ✅ Incrémenter le compteur d'analyses uniquement si succès
                 const newCount = analysisCount + 1;
                 setAnalysisCount(newCount);
                 localStorage.setItem(`jobdiagnose_analysis_count_${user.$id}`, newCount.toString());
@@ -739,9 +734,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
         } finally { setIsUploading(false); }
     };
 
-    // ═══════════════════════════════════════════════════════
-    // PAGE DE CONNEXION / INSCRIPTION / MOT DE PASSE OUBLIÉ
-    // ═══════════════════════════════════════════════════════
     if (!user) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center py-12 px-4 transition-colors duration-300">
@@ -882,9 +874,6 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
         );
     }
 
-    // ═══════════════════════════════════════════════════════
-    // PAGE PRINCIPALE (Utilisateur connecté)
-    // ═══════════════════════════════════════════════════════
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 transition-colors duration-300">
             <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-800">
@@ -928,9 +917,8 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
 
             <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <div className="mb-10">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} </h1>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Bonjour {user.name.split(' ')[0]} 👋</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Analysez votre CV et obtenez des conseils personnalisés en 30 secondes.</p>
-                    {/* ✅ CORRECTION 3 : Affichage du quota avec bouton réinitialiser */}
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Plan : <span className="font-semibold capitalize">{userPlan}</span> | 
                         Analyses utilisées : <span className="font-semibold">{analysisCount}/{planQuota}</span>
@@ -966,7 +954,8 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                     </div>
                 </div>
 
-                {userPlan === 'free' && !showPaywall && (
+                {/* ✅ Formulaire d'activation TOUJOURS visible (même après quota atteint) */}
+                {!showPaywall && (
                     <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
@@ -975,7 +964,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                                 </div>
                                 <div>
                                     <p className="font-semibold text-gray-900 dark:text-white text-sm">Vous avez un code d'activation ?</p>
-                                    <p className="text-xs text-gray-600 dark:text-gray-400">Débloquez les fonctionnalités premium</p>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">Débloquez des analyses supplémentaires</p>
                                 </div>
                             </div>
                             <button onClick={() => setShowActivationForm(!showActivationForm)} className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg text-sm font-semibold hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors whitespace-nowrap">
@@ -1049,7 +1038,7 @@ Réponds UNIQUEMENT avec un objet JSON valide (sans markdown) :
                             {showPaywall && (
                                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Quota d'analyses atteint</h3>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Vous avez utilisé vos {planQuota} analyse(s) {userPlan === 'free' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Découvrez nos formules pour continuer à optimiser votre CV.</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Vous avez utilisé vos {planQuota} analyse(s) {userPlan === 'free' || userPlan === 'découverte' ? 'gratuites' : `incluses dans votre plan ${userPlan}`}. Activez un code ou découvrez nos formules pour continuer.</p>
                                     <div className="grid sm:grid-cols-2 gap-3">
                                         <button onClick={() => { setShowActivationForm(true); setShowPaywall(false); }} className="py-3 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm">J'ai un code</button>
                                         <Link to="/#pricing" className="py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-center hover:from-blue-700 hover:to-indigo-700 transition-all text-sm flex items-center justify-center gap-2">
